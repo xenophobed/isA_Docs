@@ -1,0 +1,328 @@
+# Data Lake
+
+Zone-based data lake management with Delta Lake.
+
+## Overview
+
+isA Data provides enterprise-grade data lake infrastructure with three zones:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           DATA LAKE ARCHITECTURE                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐                  │
+│  │  RAW ZONE   │────▶│CURATED ZONE │────▶│  GOLD ZONE  │                  │
+│  ├─────────────┤     ├─────────────┤     ├─────────────┤                  │
+│  │ • Immutable │     │ • Cleaned   │     │ • Aggregated│                  │
+│  │ • Original  │     │ • Validated │     │ • Optimized │                  │
+│  │ • 365 days  │     │ • 180 days  │     │ • 90 days   │                  │
+│  │ • Engineers │     │ • Analysts  │     │ • All users │                  │
+│  └─────────────┘     └─────────────┘     └─────────────┘                  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+## Zone Characteristics
+
+| Zone | Purpose | Format | Retention | Access |
+|------|---------|--------|-----------|--------|
+| **Raw** | Immutable source data | Original (CSV, JSON, Parquet) | 365 days | Data Engineers |
+| **Curated** | Cleaned, validated data | Delta Lake (Parquet) | 180 days | Engineers, Analysts |
+| **Gold** | Analytics-ready aggregates | Delta Lake (Parquet) | 90 days | All consumers |
+
+## Ingestion
+
+### Batch Ingestion
+
+Ingest data from databases and files.
+
+#### PostgreSQL Batch
+
+```bash
+curl -X POST "http://localhost:8084/api/v1/data/ingest/batch/postgres" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "config": {
+      "host": "localhost",
+      "port": 5432,
+      "database": "mydb",
+      "username": "user",
+      "password": "pass",
+      "table": "users"
+    },
+    "domain": "account",
+    "target_zone": "raw",
+    "batch_size": 10000
+  }'
+```
+
+#### File Batch
+
+```bash
+curl -X POST "http://localhost:8084/api/v1/data/ingest/batch/file" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "file_path": "/data/users.csv",
+    "file_format": "csv",
+    "domain": "account",
+    "target_zone": "raw"
+  }'
+```
+
+#### Multiple Jobs
+
+```bash
+curl -X POST "http://localhost:8084/api/v1/data/ingest/batch/jobs" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jobs": [
+      {
+        "config": {"host": "db1", "table": "users"},
+        "domain": "account"
+      },
+      {
+        "config": {"host": "db2", "table": "orders"},
+        "domain": "sales"
+      }
+    ]
+  }'
+```
+
+### CDC (Change Data Capture)
+
+Real-time sync with source databases.
+
+```bash
+curl -X POST "http://localhost:8084/api/v1/data/ingest/cdc/publish" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": "postgres.account.users",
+    "operation": "INSERT",
+    "data": {
+      "id": 123,
+      "name": "John Doe",
+      "email": "john@example.com"
+    },
+    "timestamp": "2024-01-15T10:30:00Z"
+  }'
+```
+
+## ETL Pipelines
+
+### Raw → Curated
+
+Transform raw data into cleaned, validated format.
+
+```bash
+curl -X POST "http://localhost:8084/api/v1/data/etl/curate" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source_domain": "account",
+    "source_table": "users",
+    "transformations": {
+      "drop_null_columns": true,
+      "deduplicate": true,
+      "column_renames": {
+        "user_id": "id",
+        "user_name": "name"
+      }
+    },
+    "quality_suite": "user_quality"
+  }'
+```
+
+### Curated → Gold
+
+Aggregate curated data for analytics.
+
+```bash
+curl -X POST "http://localhost:8084/api/v1/data/etl/aggregate" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source_domain": "account",
+    "source_table": "users",
+    "aggregations": {
+      "group_by": ["region", "signup_month"],
+      "metrics": {
+        "user_count": "COUNT(*)",
+        "avg_age": "AVG(age)"
+      }
+    },
+    "target_table": "user_metrics"
+  }'
+```
+
+### Full ETL Run
+
+```bash
+curl -X POST "http://localhost:8084/api/v1/data/etl/run" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source_zone": "raw",
+    "source_domain": "account",
+    "source_table": "users",
+    "target_zone": "curated",
+    "transformations": {
+      "drop_null_columns": true,
+      "deduplicate": true
+    },
+    "quality_suite": "user_quality"
+  }'
+```
+
+## Data Quality
+
+### Quality Rules
+
+| Rule Type | Description |
+|-----------|-------------|
+| NOT_NULL | Column cannot be null |
+| UNIQUE | Values must be unique |
+| RANGE | Values within range |
+| FRESHNESS | Data not older than threshold |
+| CUSTOM_SQL | Custom validation SQL |
+
+### Quality Suite
+
+```python
+quality_suite = {
+    "name": "user_quality",
+    "rules": [
+        {"column": "email", "type": "NOT_NULL"},
+        {"column": "id", "type": "UNIQUE"},
+        {"column": "age", "type": "RANGE", "min": 0, "max": 150},
+        {"type": "FRESHNESS", "max_age_hours": 24}
+    ],
+    "fail_threshold": 0.95  # 95% must pass
+}
+```
+
+### Quality Gates
+
+```
+Data → Quality Check ─┬─▶ Pass (>95%) → Write to Target
+                      ├─▶ Warning (80-95%) → Write + Alert
+                      └─▶ Fail (<80%) → Block + Alert
+```
+
+## Zone Management
+
+### List Zones
+
+```bash
+curl "http://localhost:8084/api/v1/data/lake/zones"
+```
+
+Response:
+```json
+{
+  "zones": [
+    {
+      "name": "raw",
+      "tables": 15,
+      "total_size_gb": 120.5,
+      "last_updated": "2024-01-15T10:30:00Z"
+    },
+    {
+      "name": "curated",
+      "tables": 12,
+      "total_size_gb": 85.2,
+      "last_updated": "2024-01-15T08:00:00Z"
+    },
+    {
+      "name": "gold",
+      "tables": 8,
+      "total_size_gb": 25.1,
+      "last_updated": "2024-01-15T06:00:00Z"
+    }
+  ]
+}
+```
+
+### List Tables
+
+```bash
+curl "http://localhost:8084/api/v1/data/lake/tables?zone=curated&domain=account"
+```
+
+### Get Schema
+
+```bash
+curl "http://localhost:8084/api/v1/data/lake/tables/account.users/schema"
+```
+
+## Python SDK
+
+```python
+from isa_data import DataLakeClient
+
+client = DataLakeClient("http://localhost:8084")
+
+# Batch ingestion
+job = await client.ingest_postgres(
+    config={
+        "host": "localhost",
+        "database": "mydb",
+        "table": "users"
+    },
+    domain="account",
+    batch_size=10000
+)
+
+# ETL transformation
+result = await client.run_etl(
+    source_zone="raw",
+    source_table="account.users",
+    target_zone="curated",
+    transformations={
+        "drop_null_columns": True,
+        "deduplicate": True
+    }
+)
+
+# Query zone statistics
+stats = await client.get_zone_stats("curated")
+```
+
+## Storage Architecture
+
+### Delta Lake
+
+isA Data uses Delta Lake for ACID transactions:
+
+- **Time travel**: Query historical versions
+- **Schema evolution**: Add columns safely
+- **Upserts**: Merge operations supported
+- **Compaction**: Automatic file optimization
+
+### MinIO (S3-Compatible)
+
+```
+minio://
+└── isa-data-lake/
+    ├── raw/
+    │   └── account/
+    │       └── users/
+    │           └── _delta_log/
+    ├── curated/
+    │   └── account/
+    │       └── users/
+    └── gold/
+        └── account/
+            └── user_metrics/
+```
+
+## Performance
+
+| Operation | Target | Max |
+|-----------|--------|-----|
+| Batch Ingestion (10K rows) | < 2s | < 10s |
+| ETL Curate (100K rows) | < 30s | < 120s |
+| Zone Query | < 500ms | < 2s |
+
+## Next Steps
+
+- [Quick Start](./quickstart) - Get started
+- [Data Fabric](./data-fabric) - NL queries
+- [RAG Patterns](./rag-patterns) - Knowledge retrieval

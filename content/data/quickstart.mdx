@@ -1,0 +1,239 @@
+# Quick Start
+
+Get started with isA Data in minutes.
+
+## Prerequisites
+
+- Python 3.9+
+- Running infrastructure services (Qdrant, MinIO, PostgreSQL)
+- isA Model service for embeddings and LLM
+
+## Installation
+
+```bash
+cd isA_Data
+pip install -r requirements.txt
+```
+
+## Start the Service
+
+```bash
+# Development mode
+uvicorn main:app --reload --port 8084
+
+# Or with Python
+python main.py
+```
+
+## Basic Usage
+
+### 1. Store Knowledge
+
+Store text content for RAG:
+
+```python
+import httpx
+
+async def store_knowledge():
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "http://localhost:8084/api/v1/digital/store",
+            json={
+                "user_id": "alice",
+                "content": "Docker is a containerization platform that packages applications into containers.",
+                "content_type": "text"
+            }
+        )
+        # SSE streaming response
+        async for line in response.aiter_lines():
+            print(line)
+```
+
+### 2. Search Knowledge
+
+Semantic search across stored content:
+
+```python
+async def search_knowledge():
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "http://localhost:8084/api/v1/digital/search",
+            json={
+                "user_id": "alice",
+                "query": "What is Docker?",
+                "search_options": {
+                    "rag_mode": "simple",
+                    "top_k": 5
+                }
+            }
+        )
+        return response.json()
+```
+
+### 3. Generate RAG Response
+
+Get AI-generated answers with citations:
+
+```python
+async def get_response():
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "http://localhost:8084/api/v1/digital/response",
+            json={
+                "user_id": "alice",
+                "query": "Explain Docker containers",
+                "response_options": {
+                    "rag_mode": "simple",
+                    "context_limit": 3,
+                    "enable_citations": True
+                }
+            }
+        )
+        # SSE streaming response
+        async for line in response.aiter_lines():
+            print(line)
+```
+
+## cURL Examples
+
+### Store Text
+
+```bash
+curl -X POST "http://localhost:8084/api/v1/digital/store" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "alice",
+    "content": "Kubernetes is an open-source container orchestration platform.",
+    "content_type": "text"
+  }'
+```
+
+### Store PDF
+
+```bash
+curl -X POST "http://localhost:8084/api/v1/digital/store" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "alice",
+    "content": "https://arxiv.org/pdf/1706.03762.pdf",
+    "content_type": "pdf",
+    "metadata": {
+      "title": "Attention Is All You Need"
+    }
+  }'
+```
+
+### Search
+
+```bash
+curl -X POST "http://localhost:8084/api/v1/digital/search" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "alice",
+    "query": "transformer architecture",
+    "search_options": {"top_k": 5}
+  }'
+```
+
+### Generate Response
+
+```bash
+curl -N -X POST "http://localhost:8084/api/v1/digital/response" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "alice",
+    "query": "Explain the self-attention mechanism",
+    "response_options": {
+      "rag_mode": "simple",
+      "enable_citations": true
+    }
+  }'
+```
+
+## Data Lake Operations
+
+### Batch Ingestion
+
+```bash
+curl -X POST "http://localhost:8084/api/v1/data/ingest/batch/postgres" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "config": {
+      "host": "localhost",
+      "port": 5432,
+      "database": "mydb",
+      "username": "user",
+      "password": "pass",
+      "table": "users"
+    },
+    "domain": "account",
+    "target_zone": "raw"
+  }'
+```
+
+### Run ETL
+
+```bash
+curl -X POST "http://localhost:8084/api/v1/data/etl/curate" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source_domain": "account",
+    "source_table": "users",
+    "transformations": {
+      "drop_null_columns": true,
+      "deduplicate": true
+    }
+  }'
+```
+
+### List Zones
+
+```bash
+curl "http://localhost:8084/api/v1/data/lake/zones"
+```
+
+## Natural Language Query
+
+```bash
+curl -X POST "http://localhost:8084/api/v1/data/fabric/query" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Show me all users who signed up last month",
+    "domain": "account"
+  }'
+```
+
+## Health Check
+
+```bash
+curl "http://localhost:8084/health"
+```
+
+## Configuration
+
+### Environment Variables
+
+```bash
+# Service
+DATA_PORT=8084
+ENVIRONMENT=development
+DEBUG=true
+
+# Infrastructure
+QDRANT_GRPC_HOST=localhost
+QDRANT_GRPC_PORT=50062
+MINIO_GRPC_HOST=localhost
+MINIO_GRPC_PORT=50063
+
+# isA Model Service
+ISA_API_URL=http://localhost:8082
+
+# Optional: Consul
+CONSUL_ENABLED=false
+```
+
+## Next Steps
+
+- [RAG Patterns](./rag-patterns) - Explore 7 RAG modes
+- [Data Lake](./data-lake) - Zone management
+- [File Processing](./file-processing) - Multi-modal content

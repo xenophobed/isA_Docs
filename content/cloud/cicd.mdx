@@ -1,0 +1,167 @@
+# CI/CD
+
+GitHub Actions pipelines for build, test, and deployment.
+
+## Overview
+
+CI/CD pipeline stages:
+
+1. **Lint & Test** - Code quality and unit tests
+2. **Build** - Docker image creation
+3. **Security Scan** - Trivy vulnerability scanning
+4. **Push** - Registry upload
+5. **Deploy** - ArgoCD sync trigger
+
+## Pipeline Architecture
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│    Lint     │────▶│    Test     │────▶│    Build    │
+└─────────────┘     └─────────────┘     └─────────────┘
+                                               │
+                                               ▼
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Deploy    │◀────│  Update Git │◀────│  Push Image │
+└─────────────┘     └─────────────┘     └─────────────┘
+                                               │
+                                               ▼
+                                        ┌─────────────┐
+                                        │ Trivy Scan  │
+                                        └─────────────┘
+```
+
+## Branch Strategy
+
+| Branch | Environment | Auto-deploy |
+|--------|-------------|-------------|
+| `develop` | local | No |
+| `main` | staging | Yes |
+| `production` | production | Manual |
+
+## Workflows
+
+### Go Service CI
+
+```yaml
+# .github/workflows/ci-golang.yaml
+name: Go CI
+
+on:
+  push:
+    paths:
+      - 'services/**'
+      - 'go.mod'
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - name: Run tests
+        run: go test -v -race -coverprofile=coverage.out ./...
+```
+
+### Image Build and Push
+
+```yaml
+# .github/workflows/cd-update-images.yaml
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Harbor
+        uses: docker/login-action@v3
+        with:
+          registry: harbor.isa.io
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: harbor.isa.io/isa-cloud/${{ matrix.service }}:${{ github.sha }}
+
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: harbor.isa.io/isa-cloud/${{ matrix.service }}:${{ github.sha }}
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+```
+
+## Secrets Configuration
+
+Required secrets in GitHub:
+
+| Secret | Description |
+|--------|-------------|
+| `HARBOR_USERNAME` | Registry username |
+| `HARBOR_PASSWORD` | Registry password |
+| `ARGOCD_SERVER` | ArgoCD server URL |
+| `ARGOCD_PASSWORD` | ArgoCD admin password |
+| `KUBECONFIG` | Kubernetes config |
+
+## Security Scanning
+
+### Trivy (Container)
+
+```yaml
+- uses: aquasecurity/trivy-action@master
+  with:
+    image-ref: ${{ env.IMAGE }}
+    severity: 'CRITICAL,HIGH'
+    exit-code: '1'
+```
+
+### CodeQL (Code)
+
+```yaml
+- uses: github/codeql-action/analyze@v2
+  with:
+    languages: go
+```
+
+## Build Caching
+
+### Go Module Cache
+
+```yaml
+- uses: actions/cache@v3
+  with:
+    path: |
+      ~/.cache/go-build
+      ~/go/pkg/mod
+    key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+```
+
+### Docker Layer Cache
+
+```yaml
+- uses: docker/build-push-action@v5
+  with:
+    cache-from: type=gha
+    cache-to: type=gha,mode=max
+```
+
+## Next Steps
+
+- [Testing](./testing) - Contract-driven development
+- [Operations](./operations) - Monitoring & scripts
+- [Deployment](./deployment) - ArgoCD setup

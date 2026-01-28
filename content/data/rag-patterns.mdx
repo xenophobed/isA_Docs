@@ -1,0 +1,366 @@
+# RAG Patterns
+
+7 intelligent retrieval-augmented generation patterns for knowledge management.
+
+## Overview
+
+isA Data supports multiple RAG patterns optimized for different use cases:
+
+| Pattern | Description | Latency | Best For |
+|---------|-------------|---------|----------|
+| **Simple** | Basic vector search + LLM | Fast | General Q&A |
+| **CRAG** | Corrective with validation | Medium | Fact-checking |
+| **HyDE** | Hypothetical document embeddings | Medium | Sparse data |
+| **Graph RAG** | Knowledge graph enhanced | Medium | Entity relationships |
+| **RAG Fusion** | Multi-query fusion | Medium | Complex questions |
+| **Self-RAG** | Self-reflective generation | Slow | High accuracy |
+| **RAPTOR** | Recursive summarization | Slow | Long documents |
+
+## Simple RAG
+
+Basic vector similarity search with LLM generation.
+
+### How It Works
+
+```
+Query → Embed → Vector Search → Top-K Chunks → LLM → Response
+```
+
+### Usage
+
+```python
+# Store
+response = await client.post(
+    "/api/v1/digital/store",
+    json={
+        "user_id": "user123",
+        "content": "Your content here",
+        "content_type": "text"
+    }
+)
+
+# Search
+response = await client.post(
+    "/api/v1/digital/search",
+    json={
+        "user_id": "user123",
+        "query": "Your question",
+        "search_options": {
+            "rag_mode": "simple",
+            "top_k": 5
+        }
+    }
+)
+
+# Response
+response = await client.post(
+    "/api/v1/digital/response",
+    json={
+        "user_id": "user123",
+        "query": "Your question",
+        "response_options": {
+            "rag_mode": "simple"
+        }
+    }
+)
+```
+
+## CRAG (Corrective RAG)
+
+Adds self-correction through relevance validation.
+
+### How It Works
+
+```
+Query → Retrieve → Relevance Check ─┬─▶ Relevant → Generate
+                                    └─▶ Not Relevant → Web Search → Generate
+```
+
+### Features
+
+- Relevance scoring for retrieved chunks
+- Automatic fallback to web search
+- Self-correction loop
+
+### Usage
+
+```python
+response = await client.post(
+    "/api/v1/digital/response",
+    json={
+        "user_id": "user123",
+        "query": "What is the capital of France?",
+        "response_options": {
+            "rag_mode": "crag",
+            "relevance_threshold": 0.7,
+            "use_web_search": True
+        }
+    }
+)
+```
+
+## HyDE (Hypothetical Document Embeddings)
+
+Generates hypothetical documents to improve retrieval.
+
+### How It Works
+
+```
+Query → LLM → Hypothetical Doc → Embed → Search → Real Docs → Generate
+```
+
+### When to Use
+
+- Vague or abstract queries
+- Sparse knowledge bases
+- Concept-based search
+
+### Usage
+
+```python
+response = await client.post(
+    "/api/v1/digital/response",
+    json={
+        "user_id": "user123",
+        "query": "How do neural networks learn?",
+        "response_options": {
+            "rag_mode": "hyde",
+            "num_hypothetical_docs": 1
+        }
+    }
+)
+```
+
+## Graph RAG
+
+Knowledge graph-enhanced retrieval for entity relationships.
+
+### How It Works
+
+```
+Query → Extract Entities → Graph Traversal → Context Enrichment → Generate
+              │                   │
+              ▼                   ▼
+         Neo4j Store        Related Entities
+```
+
+### Features
+
+- Entity extraction from documents
+- Relationship mapping
+- Multi-hop traversal
+- Context enrichment
+
+### Usage
+
+```python
+# Store with graph indexing
+response = await client.post(
+    "/api/v1/digital/store",
+    json={
+        "user_id": "user123",
+        "content": "Apple Inc. was founded by Steve Jobs in Cupertino.",
+        "content_type": "text"
+    }
+)
+
+# Query with graph context
+response = await client.post(
+    "/api/v1/digital/response",
+    json={
+        "user_id": "user123",
+        "query": "Who founded Apple?",
+        "response_options": {
+            "rag_mode": "graph_rag",
+            "use_neo4j": True,
+            "max_hops": 2
+        }
+    }
+)
+```
+
+### Graph Components
+
+| Component | Purpose |
+|-----------|---------|
+| Entity Extractor | Extract entities from text |
+| Relation Extractor | Identify relationships |
+| Graph Constructor | Build Neo4j graph |
+| Knowledge Retriever | Traverse and retrieve |
+
+## RAG Fusion
+
+Multi-query fusion with Reciprocal Rank Fusion (RRF).
+
+### How It Works
+
+```
+Original Query → Query Variants (3-5) → Parallel Search → RRF Fusion → Generate
+                      │                       │
+                      ▼                       ▼
+               Rephrase/Expand          Dedupe + Rank
+```
+
+### Features
+
+- Multiple query variations
+- Parallel retrieval
+- RRF score combination
+- Improved recall
+
+### Usage
+
+```python
+response = await client.post(
+    "/api/v1/digital/response",
+    json={
+        "user_id": "user123",
+        "query": "Best practices for microservices",
+        "response_options": {
+            "rag_mode": "rag_fusion",
+            "num_queries": 3,
+            "fusion_weight": "equal"
+        }
+    }
+)
+```
+
+## Self-RAG
+
+Self-reflective generation with quality checks.
+
+### How It Works
+
+```
+Query → Retrieve → Generate Draft → Self-Critique ─┬─▶ Good → Return
+                                                   └─▶ Bad → Regenerate
+```
+
+### Features
+
+- Response quality assessment
+- Automatic regeneration
+- Hallucination detection
+- Confidence scoring
+
+### Usage
+
+```python
+response = await client.post(
+    "/api/v1/digital/response",
+    json={
+        "user_id": "user123",
+        "query": "Explain quantum computing",
+        "response_options": {
+            "rag_mode": "self_rag",
+            "reflection_enabled": True,
+            "max_iterations": 3
+        }
+    }
+)
+```
+
+## RAPTOR
+
+Recursive Abstractive Processing for Tree-Organized Retrieval.
+
+### How It Works
+
+```
+Documents → Chunk → Cluster → Summarize → Build Tree → Search Tree → Generate
+                        │
+                        ▼
+                  Hierarchical Index
+                       /\
+                      /  \
+                   Summaries
+                    /    \
+                 Chunks  Chunks
+```
+
+### Features
+
+- Hierarchical summarization
+- Multi-level retrieval
+- Long document support
+- Context compression
+
+### Usage
+
+```python
+# Store with RAPTOR indexing
+response = await client.post(
+    "/api/v1/digital/store",
+    json={
+        "user_id": "user123",
+        "content": "https://example.com/long-document.pdf",
+        "content_type": "pdf"
+    }
+)
+
+# Query with tree traversal
+response = await client.post(
+    "/api/v1/digital/response",
+    json={
+        "user_id": "user123",
+        "query": "Summarize the main findings",
+        "response_options": {
+            "rag_mode": "raptor",
+            "tree_depth": 2
+        }
+    }
+)
+```
+
+## Pattern Selection Guide
+
+| Scenario | Recommended Pattern |
+|----------|---------------------|
+| Quick Q&A | Simple RAG |
+| Fact verification | CRAG |
+| Abstract concepts | HyDE |
+| Entity relationships | Graph RAG |
+| Improve recall | RAG Fusion |
+| High accuracy required | Self-RAG |
+| Long documents | RAPTOR |
+
+## Evaluation
+
+All patterns support DeepEval quality metrics:
+
+| Metric | Description | Target |
+|--------|-------------|--------|
+| Faithfulness | Grounded in context | > 0.8 |
+| Relevancy | Answers the question | > 0.75 |
+| Context Precision | Right chunks retrieved | > 0.7 |
+| Context Recall | All info retrieved | > 0.7 |
+
+```python
+# Get evaluation metrics
+response = await client.post(
+    "/api/v1/digital/response",
+    json={
+        "user_id": "user123",
+        "query": "Your question",
+        "response_options": {
+            "rag_mode": "simple",
+            "include_evaluation": True
+        }
+    }
+)
+
+# Response includes:
+# {
+#   "response": "...",
+#   "evaluation": {
+#     "faithfulness": 0.85,
+#     "relevancy": 0.82
+#   }
+# }
+```
+
+## Next Steps
+
+- [Quick Start](./quickstart) - Get started
+- [Data Lake](./data-lake) - Zone management
+- [File Processing](./file-processing) - Multi-modal content

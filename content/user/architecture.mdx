@@ -1,0 +1,188 @@
+# Architecture
+
+Infrastructure, service discovery, and system design.
+
+## Overview
+
+isA User employs a modern microservices architecture with:
+
+- **31 microservices** across 3 tiers
+- **Service discovery** via Consul
+- **API gateway** via APISIX
+- **Event-driven** communication via NATS
+- **Multi-database** strategy
+- **Kubernetes** deployment
+
+## System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          EXTERNAL TRAFFIC (Port 80/443)                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          APISIX GATEWAY                                     │
+│        Rate limiting • Authentication • Load balancing • SSL termination    │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      CONSUL SERVICE REGISTRY                                │
+│        Service registration • Health checking • Dynamic routing             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      31 MICROSERVICES (Ports 8201-8250)                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    gRPC INFRASTRUCTURE (Ports 50051-50070)                  │
+│        PostgreSQL gRPC • Redis gRPC • Qdrant gRPC • MinIO gRPC • Neo4j gRPC │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      DATABASE LAYER                                         │
+│   PostgreSQL • Redis • Neo4j • Qdrant • MinIO • DuckDB • MQTT              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+## Service Discovery (Consul)
+
+```python
+# core/consul_registry.py
+async def register_service(
+    service_name: str,
+    port: int,
+    health_check_path: str = "/health"
+):
+    await consul.agent.service.register(
+        name=service_name,
+        service_id=f"{service_name}-{instance_id}",
+        port=port,
+        check={
+            "http": f"http://localhost:{port}{health_check_path}",
+            "interval": "10s"
+        }
+    )
+```
+
+## Event-Driven Architecture (NATS)
+
+```python
+# Publish event
+await nats.publish(
+    "user.created",
+    json.dumps({
+        "user_id": "user_123",
+        "email": "user@example.com"
+    }).encode()
+)
+
+# Subscribe to events
+async def handle_user_created(msg):
+    data = json.loads(msg.data.decode())
+    await notification_service.send_welcome_email(data["user_id"])
+
+await nats.subscribe("user.created", cb=handle_user_created)
+```
+
+### Event Streams
+
+| Stream | Events |
+|--------|--------|
+| USERS | user.created, user.updated, user.deleted |
+| PAYMENTS | payment.succeeded, payment.failed |
+| STORAGE | file.uploaded, file.deleted |
+| DEVICES | device.registered, device.online |
+
+## Database Strategy
+
+| Database | Purpose |
+|----------|---------|
+| PostgreSQL + pgvector | Relational data, embeddings |
+| Redis | Cache, sessions, pub/sub |
+| Neo4j | Social graphs, org hierarchies |
+| Qdrant | Vector search, semantic memory |
+| DuckDB | Analytics, OLAP |
+| MinIO | S3-compatible object storage |
+
+## Rate Limiting
+
+| Endpoint Type | Limit |
+|--------------|-------|
+| Public (login) | 5/minute |
+| Authenticated | 1000/hour |
+| Admin | 10000/hour |
+
+## Port Assignments
+
+| Range | Purpose |
+|-------|---------|| 80, 443 | APISIX Gateway |
+| 8201-8210 | Tier 1 Services |
+| 8211-8230 | Tier 2 Services |
+| 8250+ | Extended Services |
+| 50051-50070 | gRPC Infrastructure |
+
+## Health Checks
+
+```python
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "service": "auth_service",
+        "version": "1.0.0",
+        "dependencies": {
+            "postgres": await check_postgres(),
+            "redis": await check_redis()
+        }
+    }
+```
+
+## Kubernetes Deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: isa-cloud-staging
+spec:
+  replicas: 3
+  template:
+    spec:
+      containers:
+        - name: auth-service
+          image: isa/auth-service:latest
+          ports:
+            - containerPort: 8201
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+```
+
+## Security
+
+### Authentication Flow
+
+```
+Client → APISIX → JWT Validation → Service
+                      │
+                      ▼
+              auth_service (verify)
+```
+
+### Secrets Management
+
+- Vault service for encrypted secrets
+- Environment variables for non-sensitive config
+- Kubernetes secrets for deployment
+
+## Next Steps
+
+- [Quick Start](./quickstart) - Get started
+- [Authentication](./authentication) - Auth details
+- [Memory](./memory) - AI cognitive memory

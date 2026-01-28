@@ -1,0 +1,172 @@
+# Storage
+
+File storage, media processing, and content management.
+
+## Overview
+
+Content management is handled by four services:
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| storage_service | 8209 | File upload, sharing, versioning |
+| album_service | 8219 | Photo albums, collections |
+| media_service | 8222 | Transcoding, thumbnails |
+| document_service | 8227 | Documents, OCR, text extraction |
+
+## Storage Service (8209)
+
+### Upload File
+
+```bash
+curl -X POST "http://localhost:8209/api/v1/storage/upload" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -F "file=@/path/to/photo.jpg" \
+  -F "folder=photos"
+```
+
+### Download File
+
+```bash
+curl "http://localhost:8209/api/v1/storage/files/file_abc123/download" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -o downloaded_file.jpg
+```
+
+### Create Public Link
+
+```bash
+curl -X POST "http://localhost:8209/api/v1/storage/files/file_abc123/share" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "visibility": "public",
+    "expires_in_days": 7
+  }'
+```
+
+### Storage Quota
+
+```bash
+curl "http://localhost:8209/api/v1/storage/quota" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+## Album Service (8219)
+
+### Create Album
+
+```bash
+curl -X POST "http://localhost:8219/api/v1/albums" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Summer Vacation 2024",
+    "description": "Photos from our trip"
+  }'
+```
+
+### Add Photos to Album
+
+```bash
+curl -X POST "http://localhost:8219/api/v1/albums/album_123/photos" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"file_ids": ["file_abc123", "file_def456"]}'
+```
+
+## Media Service (8222)
+
+### Generate Thumbnail
+
+```bash
+curl -X POST "http://localhost:8222/api/v1/media/thumbnail" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "file_id": "file_abc123",
+    "width": 200,
+    "height": 200,
+    "format": "webp"
+  }'
+```
+
+### Transcode Video
+
+```bash
+curl -X POST "http://localhost:8222/api/v1/media/transcode" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "file_id": "file_video123",
+    "output_format": "mp4",
+    "quality": "720p"
+  }'
+```
+
+## Document Service (8227)
+
+### Upload Document with OCR
+
+```bash
+curl -X POST "http://localhost:8227/api/v1/documents" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -F "file=@/path/to/document.pdf" \
+  -F "extract_text=true"
+```
+
+## Supported Formats
+
+| Input | Output | Operations |
+|-------|--------|------------|
+| JPEG, PNG, WebP | JPEG, PNG, WebP, AVIF | Resize, crop, rotate |
+| MP4, MOV, AVI | MP4, WebM | Transcode, compress |
+| MP3, WAV, M4A | MP3, AAC | Convert, normalize |
+
+## Semantic Search
+
+```bash
+curl -X POST "http://localhost:8209/api/v1/storage/search" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "sunset beach vacation",
+    "type": "semantic",
+    "limit": 20
+  }'
+```
+
+## Python SDK
+
+```python
+from isa_user import StorageClient, AlbumClient
+
+storage = StorageClient("http://localhost:8209")
+albums = AlbumClient("http://localhost:8219")
+
+# Upload file
+file = await storage.upload(
+    token=access_token,
+    file_path="/path/to/photo.jpg",
+    folder="photos"
+)
+
+# Create album
+album = await albums.create(
+    token=access_token,
+    name="Vacation 2024",
+    file_ids=[file.file_id]
+)
+
+# Semantic search
+results = await storage.search(
+    token=access_token,
+    query="beach sunset",
+    type="semantic"
+)
+```
+
+## Next Steps
+
+- [Organizations](./organizations) - Multi-tenant & family sharing
+- [Memory](./memory) - AI cognitive memory
+- [Payments](./payments) - Payment processing

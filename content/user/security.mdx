@@ -1,0 +1,143 @@
+# Security
+
+Secure credential and secret management.
+
+## Overview
+
+Security capabilities are handled by the vault service:
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| vault_service | 8214 | Encrypted secrets, credentials |
+
+## Vault Service (8214)
+
+### Create Secret
+
+```bash
+curl -X POST "http://localhost:8214/api/v1/vault/secrets" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Production Database",
+    "type": "database_credential",
+    "value": {
+      "host": "db.example.com",
+      "port": 5432,
+      "username": "admin",
+      "password": "super_secret_password"
+    },
+    "encryption": "aes256",
+    "tags": ["production", "database"]
+  }'
+```
+
+### Get Secret
+
+```bash
+curl "http://localhost:8214/api/v1/vault/secrets/vault_abc123" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Share Secret
+
+```bash
+curl -X POST "http://localhost:8214/api/v1/vault/secrets/vault_abc123/share" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_ids": ["user_456"],
+    "permission": "read",
+    "expires_at": "2024-02-28T00:00:00Z"
+  }'
+```
+
+### Get Access Logs
+
+```bash
+curl "http://localhost:8214/api/v1/vault/secrets/vault_abc123/access-logs" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+## Secret Types
+
+| Type | Description | Fields |
+|------|-------------|--------|
+| `api_key` | API keys and tokens | key, provider |
+| `database_credential` | Database credentials | host, port, username, password |
+| `ssh_key` | SSH private keys | private_key, public_key, passphrase |
+| `certificate` | TLS/SSL certificates | certificate, private_key, chain |
+| `oauth_credential` | OAuth tokens | client_id, client_secret, refresh_token |
+
+## Encryption Methods
+
+| Method | Description |
+|--------|-------------|
+| `aes256` | AES-256-GCM encryption |
+| `aes128` | AES-128-GCM encryption |
+| `chacha20` | ChaCha20-Poly1305 |
+
+## Permission Levels
+
+| Permission | Capabilities |
+|------------|--------------|
+| `read` | View secret value |
+| `write` | Update secret value |
+| `admin` | Full control, delete, share |
+
+## Rotation
+
+### Auto-Rotation Policy
+
+```bash
+curl -X POST "http://localhost:8214/api/v1/vault/secrets/vault_abc123/rotation-policy" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "enabled": true,
+    "interval_days": 90,
+    "notification_days_before": 7
+  }'
+```
+
+## Python SDK
+
+```python
+from isa_user import VaultClient
+
+vault = VaultClient("http://localhost:8214")
+
+# Create secret
+secret = await vault.create(
+    token=access_token,
+    name="Production Database",
+    type="database_credential",
+    value={"host": "db.example.com", "password": "secret"},
+    tags=["production"]
+)
+
+# Get secret
+data = await vault.get(token=access_token, vault_id=secret.vault_id)
+
+# Share secret
+await vault.share(
+    token=access_token,
+    vault_id=secret.vault_id,
+    user_ids=["user_456"],
+    permission="read"
+)
+```
+
+## Best Practices
+
+1. **Principle of Least Privilege**: Grant minimum necessary permissions
+2. **Time-Limited Access**: Use expiring shares for temporary access
+3. **Audit Regularly**: Review access logs periodically
+4. **Rotate Frequently**: Implement rotation policies
+5. **Use Strong Encryption**: Prefer AES-256
+
+## Next Steps
+
+- [Authentication](./authentication) - Auth services
+- [Operations](./operations) - Audit & compliance
+- [Architecture](./architecture) - System design

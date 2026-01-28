@@ -1,0 +1,248 @@
+# Data Fabric
+
+Natural language query interface for self-service analytics.
+
+## Overview
+
+Data Fabric enables business users to query data using natural language, automatically translating questions into SQL.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         DATA FABRIC FLOW                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  "Show me users who     Schema        SQL Query        Results              │
+│   signed up last       Discovery      Generation       Execution            │
+│   month"                                                                    │
+│       │                   │               │               │                 │
+│       ▼                   ▼               ▼               ▼                 │
+│  ┌─────────┐        ┌─────────┐     ┌─────────┐     ┌─────────┐           │
+│  │   NL    │───────▶│ Schema  │────▶│   SQL   │────▶│ Execute │           │
+│  │ Parser  │        │ Match   │     │   Gen   │     │ + Format│           │
+│  └─────────┘        └─────────┘     └─────────┘     └─────────┘           │
+│                          │               │               │                 │
+│                          ▼               ▼               ▼                 │
+│                     users table    SELECT * FROM   DataFrame +            │
+│                     signup_date    users WHERE...  Visualization          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+## Natural Language Query
+
+### Endpoint
+
+```bash
+POST /api/v1/data/fabric/query
+```
+
+### Request
+
+```json
+{
+  "query": "Show me all users who signed up last month",
+  "domain": "account",
+  "options": {
+    "include_sql": true,
+    "limit": 100
+  }
+}
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "natural_query": "Show me all users who signed up last month",
+  "generated_sql": "SELECT * FROM account.users WHERE signup_date >= '2024-12-01' AND signup_date < '2025-01-01' LIMIT 100",
+  "results": [
+    {"id": 1, "name": "Alice", "signup_date": "2024-12-15"},
+    {"id": 2, "name": "Bob", "signup_date": "2024-12-20"}
+  ],
+  "row_count": 2,
+  "execution_time_ms": 150
+}
+```
+
+## Query Examples
+
+### Simple Queries
+
+```bash
+# Count users
+curl -X POST "http://localhost:8084/api/v1/data/fabric/query" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "How many users do we have?", "domain": "account"}'
+
+# Filter by condition
+curl -X POST "http://localhost:8084/api/v1/data/fabric/query" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Show users from California", "domain": "account"}'
+```
+
+### Aggregation Queries
+
+```bash
+# Group by
+curl -X POST "http://localhost:8084/api/v1/data/fabric/query" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Count users by country", "domain": "account"}'
+
+# Time-based aggregation
+curl -X POST "http://localhost:8084/api/v1/data/fabric/query" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Monthly signups for the past year", "domain": "account"}'
+```
+
+### Join Queries
+
+```bash
+# Cross-table query
+curl -X POST "http://localhost:8084/api/v1/data/fabric/query" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Show users with their total order amounts", "domain": "sales"}'
+```
+
+## Schema Discovery
+
+### Embed Schema Metadata
+
+For accurate query generation, embed your schema:
+
+```bash
+curl -X POST "http://localhost:8084/api/v1/data/metadata/embed" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "domain": "account",
+    "tables": [
+      {
+        "name": "users",
+        "description": "User accounts and profiles",
+        "columns": [
+          {"name": "id", "type": "INTEGER", "description": "Primary key"},
+          {"name": "name", "type": "VARCHAR", "description": "Full name"},
+          {"name": "email", "type": "VARCHAR", "description": "Email address"},
+          {"name": "signup_date", "type": "DATE", "description": "Registration date"},
+          {"name": "country", "type": "VARCHAR", "description": "Country code"}
+        ]
+      }
+    ]
+  }'
+```
+
+### Search Metadata
+
+```bash
+curl "http://localhost:8084/api/v1/data/metadata/search?query=user+signup"
+```
+
+## Query Statistics
+
+```bash
+curl "http://localhost:8084/api/v1/data/fabric/stats"
+```
+
+Response:
+```json
+{
+  "total_queries": 1250,
+  "successful_queries": 1180,
+  "avg_execution_time_ms": 245,
+  "popular_domains": ["account", "sales", "product"],
+  "query_types": {
+    "select": 800,
+    "aggregation": 350,
+    "join": 100
+  }
+}
+```
+
+## Python SDK
+
+```python
+from isa_data import DataFabricClient
+
+client = DataFabricClient("http://localhost:8084")
+
+# Natural language query
+result = await client.query(
+    "Show me top 10 customers by revenue",
+    domain="sales"
+)
+
+print(result.sql)       # Generated SQL
+print(result.data)      # Query results
+print(result.columns)   # Column names
+
+# With options
+result = await client.query(
+    "Monthly active users trend",
+    domain="account",
+    include_sql=True,
+    limit=1000
+)
+```
+
+## Supported Query Types
+
+| Type | Example | SQL Generated |
+|------|---------|---------------|
+| Select | "Show all users" | `SELECT * FROM users` |
+| Filter | "Users from US" | `SELECT * FROM users WHERE country = 'US'` |
+| Count | "How many orders?" | `SELECT COUNT(*) FROM orders` |
+| Sum | "Total revenue" | `SELECT SUM(amount) FROM orders` |
+| Average | "Average order value" | `SELECT AVG(amount) FROM orders` |
+| Group By | "Orders by status" | `SELECT status, COUNT(*) FROM orders GROUP BY status` |
+| Order By | "Top 10 customers" | `SELECT * FROM customers ORDER BY revenue DESC LIMIT 10` |
+| Time Range | "Last 30 days" | `WHERE created_at >= NOW() - INTERVAL '30 days'` |
+| Join | "Users with orders" | `SELECT u.*, o.* FROM users u JOIN orders o ON ...` |
+
+## Safety Guardrails
+
+Data Fabric includes safety measures:
+
+- **Read-only**: Only SELECT queries allowed
+- **Rate limiting**: Prevents query abuse
+- **Result limits**: Maximum row count enforced
+- **Query timeout**: Long queries terminated
+- **Domain isolation**: Users can only query allowed domains
+
+## Integration
+
+### With Data Products
+
+```python
+# Query a registered data product
+result = await client.query(
+    "Customer 360 summary for top accounts",
+    data_product="customer_360"
+)
+```
+
+### With Visualization
+
+```python
+import matplotlib.pyplot as plt
+
+result = await client.query("Monthly revenue for 2024", domain="sales")
+
+# Plot results
+df = result.to_dataframe()
+df.plot(x='month', y='revenue', kind='bar')
+plt.show()
+```
+
+## Performance
+
+| Metric | Target |
+|--------|--------|
+| NL to SQL generation | < 1s |
+| Query execution | < 2s |
+| Total latency | < 3s |
+
+## Next Steps
+
+- [Quick Start](./quickstart) - Get started
+- [Data Lake](./data-lake) - Zone management
+- [RAG Patterns](./rag-patterns) - Knowledge retrieval

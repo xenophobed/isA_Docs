@@ -1,3 +1,8 @@
 export default {
-  index: 'Overview'
+  index: 'Overview',
+  quickstart: 'Quick Start',
+  'rag-patterns': 'RAG Patterns',
+  'data-lake': 'Data Lake',
+  'data-fabric': 'Data Fabric',
+  'file-processing': 'File Processing'
 }

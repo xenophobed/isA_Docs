@@ -1,0 +1,169 @@
+# Operations
+
+Platform operations, monitoring, and compliance services.
+
+## Overview
+
+Operational capabilities are handled by five services:
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| audit_service | 8205 | Event logging, security tracking |
+| notification_service | 8206 | Multi-channel notifications |
+| task_service | 8211 | Background jobs, scheduling |
+| compliance_service | 8226 | Content moderation, PII detection |
+| event_service | 8230 | Event sourcing, analytics |
+
+## Audit Service (8205)
+
+### Log Audit Event
+
+```bash
+curl -X POST "http://localhost:8205/api/v1/audit/events" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event_type": "user.login",
+    "category": "authentication",
+    "severity": "info",
+    "actor_id": "user_123",
+    "resource_type": "session",
+    "resource_id": "sess_abc",
+    "action": "create"
+  }'
+```
+
+### Query Audit Events
+
+```bash
+curl -X POST "http://localhost:8205/api/v1/audit/events/query" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event_type": "user.login",
+    "actor_id": "user_123",
+    "from_date": "2024-01-01T00:00:00Z",
+    "to_date": "2024-01-31T23:59:59Z"
+  }'
+```
+
+### Create Security Alert
+
+```bash
+curl -X POST "http://localhost:8205/api/v1/audit/security/alerts" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "alert_type": "suspicious_login",
+    "severity": "high",
+    "user_id": "user_123",
+    "description": "Login from unusual location"
+  }'
+```
+
+## Notification Service (8206)
+
+### Send Notification
+
+```bash
+curl -X POST "http://localhost:8206/api/v1/notifications/send" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "user_123",
+    "template_id": "welcome_email",
+    "channels": ["email", "in_app"],
+    "variables": {"name": "John"},
+    "priority": "high"
+  }'
+```
+
+### Notification Channels
+
+| Channel | Description |
+|---------|-------------|
+| `email` | Email via SMTP/SendGrid |
+| `sms` | SMS via Twilio |
+| `in_app` | In-app notification center |
+| `push` | Push notifications (iOS/Android) |
+| `webhook` | HTTP webhook delivery |
+
+## Task Service (8211)
+
+### Create Task
+
+```bash
+curl -X POST "http://localhost:8211/api/v1/tasks" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "process_video",
+    "type": "transcoding",
+    "priority": "high",
+    "payload": {"file_id": "file_123"},
+    "scheduled_at": "2024-01-28T12:00:00Z"
+  }'
+```
+
+### Task Status
+
+| Status | Description |
+|--------|-------------|
+| `pending` | Task queued |
+| `running` | Currently executing |
+| `completed` | Successfully finished |
+| `failed` | Execution failed |
+
+## Compliance Service (8226)
+
+### Check Content
+
+```bash
+curl -X POST "http://localhost:8226/api/v1/compliance/check" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "User submitted text",
+    "content_type": "text",
+    "check_types": ["toxicity", "pii", "prompt_injection"]
+  }'
+```
+
+### Check Types
+
+| Type | Description |
+|------|-------------|
+| `toxicity` | Hate speech, harassment |
+| `pii` | Personal identifiable information |
+| `prompt_injection` | AI prompt injection attacks |
+| `nsfw` | Adult content detection |
+
+## Event Service (8230)
+
+### Publish Event
+
+```bash
+curl -X POST "http://localhost:8230/api/v1/events" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event_type": "user.signup",
+    "source": "web_app",
+    "category": "user",
+    "payload": {"user_id": "user_123"}
+  }'
+```
+
+### Event Categories
+
+| Category | Event Types |
+|----------|-------------|
+| `user` | signup, login, logout |
+| `payment` | created, succeeded, failed |
+| `storage` | upload, download, delete |
+
+## Next Steps
+
+- [Commerce](./commerce) - Orders & products
+- [Security](./security) - Vault & secrets
+- [Architecture](./architecture) - System design

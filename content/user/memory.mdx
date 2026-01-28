@@ -1,0 +1,210 @@
+# Memory
+
+AI-powered cognitive memory system for intelligent agents.
+
+## Overview
+
+The memory_service (port 8223) implements a sophisticated multi-layered cognitive memory system inspired by human memory architecture.
+
+## Memory Types
+
+| Memory Type | Description | Storage | Retrieval |
+|-------------|-------------|---------|-----------|
+| **Working** | Active context, current focus | Redis | Key-value |
+| **Session** | Conversation context | Redis | Session ID |
+| **Episodic** | Personal experiences, events | Qdrant | Semantic search |
+| **Semantic** | Facts, concepts, knowledge | Qdrant | Semantic search |
+| **Procedural** | How-to knowledge, skills | PostgreSQL | Structured query |
+| **Factual** | Subject-predicate-object facts | PostgreSQL | Structured query |
+
+## Working Memory
+
+### Store Working Memory
+
+```bash
+curl -X POST "http://localhost:8223/api/v1/memory/working" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "key": "current_task",
+    "value": {"task_id": "task_123", "description": "Writing documentation"},
+    "ttl_seconds": 3600
+  }'
+```
+
+### Get Working Memory
+
+```bash
+curl "http://localhost:8223/api/v1/memory/working/current_task" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+## Episodic Memory
+
+### Store Episodic Memory
+
+```bash
+curl -X POST "http://localhost:8223/api/v1/memory/episodic" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "User completed their first project deployment successfully",
+    "timestamp": "2024-01-28T15:30:00Z",
+    "emotion": "proud",
+    "importance": 0.8
+  }'
+```
+
+### Search Episodic Memory
+
+```bash
+curl -X POST "http://localhost:8223/api/v1/memory/episodic/search" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "project deployment success",
+    "time_range": {"from": "2024-01-01", "to": "2024-01-31"},
+    "limit": 10
+  }'
+```
+
+## Semantic Memory
+
+### Store Semantic Memory
+
+```bash
+curl -X POST "http://localhost:8223/api/v1/memory/semantic" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "concept": "Docker",
+    "definition": "A platform for running applications in containers",
+    "category": "technology",
+    "related_concepts": ["containers", "kubernetes"]
+  }'
+```
+
+## Factual Memory
+
+### Store Fact
+
+```bash
+curl -X POST "http://localhost:8223/api/v1/memory/factual" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subject": "user_123",
+    "predicate": "prefers",
+    "object": "dark_theme",
+    "confidence": 1.0
+  }'
+```
+
+### Query Facts
+
+```bash
+curl -X POST "http://localhost:8223/api/v1/memory/factual/query" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"subject": "user_123", "predicate": "prefers"}'
+```
+
+## Procedural Memory
+
+### Store Procedure
+
+```bash
+curl -X POST "http://localhost:8223/api/v1/memory/procedural" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "deploy_to_kubernetes",
+    "description": "Deploy application to Kubernetes",
+    "steps": [
+      {"order": 1, "action": "Build Docker image"},
+      {"order": 2, "action": "Push to registry"},
+      {"order": 3, "action": "Apply manifests"}
+    ]
+  }'
+```
+
+## Unified Search
+
+```bash
+curl -X POST "http://localhost:8223/api/v1/memory/search" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "user preferences for code editor",
+    "memory_types": ["episodic", "semantic", "factual"],
+    "limit": 10
+  }'
+```
+
+## Memory Consolidation
+
+```bash
+curl -X POST "http://localhost:8223/api/v1/memory/consolidate" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "sess_abc123",
+    "extract": ["episodic", "semantic", "factual"],
+    "importance_threshold": 0.5
+  }'
+```
+
+## Python SDK
+
+```python
+from isa_user import MemoryClient
+
+memory = MemoryClient("http://localhost:8223")
+
+# Store episodic memory
+await memory.store_episodic(
+    token=access_token,
+    content="User completed project setup",
+    emotion="satisfied",
+    importance=0.7
+)
+
+# Store fact
+await memory.store_fact(
+    token=access_token,
+    subject="user_123",
+    predicate="likes",
+    object="python"
+)
+
+# Search memories
+results = await memory.search(
+    token=access_token,
+    query="python programming preferences",
+    memory_types=["episodic", "semantic", "factual"]
+)
+```
+
+## RAG Integration
+
+```python
+# Use memory for RAG context
+memories = await memory.search(
+    token=access_token,
+    query=user_question,
+    limit=5
+)
+
+context = "\n".join([m.content for m in memories])
+
+# Generate response with memory context
+response = await llm.generate(
+    prompt=f"Context from memory:\n{context}\n\nQuestion: {user_question}"
+)
+```
+
+## Next Steps
+
+- [Architecture](./architecture) - Infrastructure details
+- [Authentication](./authentication) - Auth services
+- [Storage](./storage) - File management

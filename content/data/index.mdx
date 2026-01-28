@@ -1,45 +1,124 @@
-# Data Service
+# isA Data
 
-Storage and data pipelines for AI agents.
+Data-as-a-Service platform combining intelligent RAG with enterprise data lake management.
 
 ## Overview
 
-The Data Service provides persistent storage and data processing capabilities for AI agents.
+isA Data provides a unified platform for knowledge management and structured data analytics:
 
-## Features
+| Capability | Description |
+|------------|-------------|
+| **Intelligent RAG** | 7 RAG patterns for knowledge retrieval |
+| **Data Lake** | Zone-based storage (Raw → Curated → Gold) |
+| **Data Fabric** | Natural language query interface |
+| **Multi-Modal** | PDF, Image, Audio, Video processing |
+| **Data Products** | Self-service analytics with quality guarantees |
 
-### Storage
-- **Object Storage** - Store files, images, documents
-- **Vector Database** - Embeddings for RAG applications
-- **Key-Value Store** - Fast caching and state storage
-- **Session Storage** - Persistent conversation history
+## Architecture
 
-### Data Pipelines
-- ETL workflows
-- Real-time data streaming
-- Scheduled data sync
-
-### Integrations
-- Connect to external databases
-- Import from cloud storage (S3, GCS)
-- Export to data warehouses
-
-## Quick Start
-
-```python
-from isa_agent_sdk import ISAAgentOptions
-
-options = ISAAgentOptions(
-    # Enable persistent storage for the session
-    session_id="my-session",
-    storage_enabled=True
-)
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          API LAYER                                          │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐          │
+│  │/digital │  │ /fabric │  │/ingest  │  │  /etl   │  │/catalog │          │
+│  └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘          │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        SERVICE LAYER                                        │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐       │
+│  │   Digital   │  │ Data Fabric │  │ Data Infra  │  │Data Product │       │
+│  │   Service   │  │   Service   │  │   Service   │  │   Service   │       │
+│  │             │  │             │  │             │  │             │       │
+│  │ • 7 RAG     │  │ • NL Query  │  │ • Ingestion │  │ • Register  │       │
+│  │ • Store     │  │ • SQL Gen   │  │ • ETL       │  │ • Quality   │       │
+│  │ • Search    │  │ • Schema    │  │ • Zones     │  │ • Contracts │       │
+│  │ • Evaluate  │  │ • Metadata  │  │ • CDC       │  │ • SLA       │       │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘       │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      INFRASTRUCTURE LAYER                                   │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐          │
+│  │ Qdrant  │  │  MinIO  │  │PostgreSQL│ │  Neo4j  │  │  NATS   │          │
+│  │ (Vector)│  │ (S3/Lake)│ │  (Meta) │  │ (Graph) │  │ (Events)│          │
+│  └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘          │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Coming Soon
+## Core Services
 
-Full documentation including:
-- Vector database setup
-- RAG implementation guide
-- Data pipeline configuration
-- Backup and recovery
+### Digital Service (RAG/Knowledge)
+
+Intelligent retrieval-augmented generation with 7 RAG patterns:
+
+| Pattern | Description | Best For |
+|---------|-------------|----------|
+| Simple RAG | Basic vector search + LLM | General Q&A |
+| CRAG | Corrective RAG with validation | Fact-checking |
+| HyDE | Hypothetical Document Embeddings | Sparse data |
+| Graph RAG | Knowledge graph enhanced | Entity relationships |
+| RAG Fusion | Multi-query fusion | Complex questions |
+| Self-RAG | Self-reflective generation | High accuracy |
+| RAPTOR | Recursive summarization trees | Long documents |
+
+### Data Infrastructure Service
+
+Delta Lake management with zone-based architecture:
+
+```
+Raw Zone          Curated Zone        Gold Zone
+┌─────────┐      ┌─────────┐         ┌─────────┐
+│Immutable│ ──▶  │ Cleaned │  ──▶    │Aggregated│
+│ Source  │      │Validated│         │Optimized │
+│ 365 days│      │ 180 days│         │ 90 days  │
+└─────────┘      └─────────┘         └─────────┘
+```
+
+### Data Fabric Service
+
+Natural language to SQL translation for self-service analytics:
+
+- Schema-aware query generation
+- Metadata embedding for discovery
+- Result formatting and visualization
+
+### File Processing
+
+Multi-modal content extraction:
+
+| Type | Capabilities |
+|------|-------------|
+| PDF | Text, tables, images, OCR |
+| Image | AI analysis, descriptions, metadata |
+| Audio | Transcription (Whisper) |
+| Video | Frames, scenes, transcript |
+
+## Quality Metrics
+
+| Metric | Target |
+|--------|--------|
+| RAG Faithfulness | > 0.8 |
+| RAG Relevancy | > 0.75 |
+| NL Query Latency | < 2s |
+| Data Freshness (Raw) | < 1h |
+| Data Freshness (Gold) | < 24h |
+
+## Infrastructure Dependencies
+
+| Service | Purpose | Port |
+|---------|---------|------|
+| Qdrant | Vector database | 6334 |
+| MinIO | Object storage (S3) | 9000 |
+| PostgreSQL | Metadata store | 5432 |
+| Neo4j | Graph database | 7687 |
+| NATS | Event streaming | 4222 |
+| isA Model | Embeddings & LLM | 8082 |
+
+## Next Steps
+
+- [Quick Start](./quickstart) - Get started
+- [RAG Patterns](./rag-patterns) - 7 RAG modes
+- [Data Lake](./data-lake) - Zone management
+- [Data Fabric](./data-fabric) - NL queries
+- [File Processing](./file-processing) - Multi-modal

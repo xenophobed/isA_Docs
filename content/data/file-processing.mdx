@@ -1,0 +1,343 @@
+# File Processing
+
+Multi-modal content extraction for knowledge management.
+
+## Overview
+
+isA Data supports processing multiple file types for RAG and knowledge extraction:
+
+| Type | Formats | Capabilities |
+|------|---------|-------------|
+| **PDF** | .pdf | Text, tables, images, OCR |
+| **Image** | .png, .jpg, .webp | AI analysis, descriptions, metadata |
+| **Audio** | .mp3, .wav, .m4a | Transcription (Whisper) |
+| **Video** | .mp4, .mov | Frames, scenes, transcript |
+| **Office** | .docx, .xlsx, .pptx | Text extraction |
+| **Text** | .txt, .md | Chunking, metadata |
+
+## PDF Processing
+
+### Store PDF
+
+```bash
+curl -X POST "http://localhost:8084/api/v1/digital/store" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "user123",
+    "content": "https://arxiv.org/pdf/1706.03762.pdf",
+    "content_type": "pdf",
+    "metadata": {
+      "source": "arxiv",
+      "title": "Attention Is All You Need"
+    }
+  }'
+```
+
+### Processing Flow
+
+```
+PDF URL → Download → Extract ─┬─▶ Text → Chunk → Embed → Store
+                              ├─▶ Tables → Structure → Store
+                              └─▶ Images → OCR → Store
+```
+
+### Extraction Capabilities
+
+| Feature | Description |
+|---------|-------------|
+| Text | Clean text extraction with layout preservation |
+| Tables | Structured table extraction to JSON |
+| Images | Extract embedded images |
+| OCR | Optical character recognition for scanned PDFs |
+| Metadata | Title, author, creation date |
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "content_type": "pdf",
+  "chunks_stored": 45,
+  "metadata": {
+    "title": "Attention Is All You Need",
+    "pages": 15,
+    "tables_extracted": 3,
+    "images_extracted": 8
+  }
+}
+```
+
+## Image Processing
+
+### Store Image with AI Analysis
+
+```bash
+curl -X POST "http://localhost:8084/api/v1/digital/store" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "user123",
+    "content": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4",
+    "content_type": "image",
+    "metadata": {
+      "source": "unsplash"
+    }
+  }'
+```
+
+### AI Metadata Extraction
+
+Images are automatically analyzed to extract:
+
+| Field | Description | Example |
+|-------|-------------|---------|
+| `ai_categories` | Image classification | `["landscape"]` |
+| `ai_tags` | Semantic tags (5-15) | `["mountains", "sunset", "snow"]` |
+| `ai_mood` | Emotional tone | `"peaceful"` |
+| `ai_style` | Photography style | `"professional"` |
+| `ai_quality_score` | Quality rating (0-1) | `0.88` |
+| `ai_has_people` | Contains people | `false` |
+| `ai_has_text` | Contains text | `false` |
+| `ai_dominant_colors` | Main colors (2-4) | `["blue", "orange", "white"]` |
+| `ai_composition` | Composition type | `"rule-of-thirds"` |
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "content_type": "image",
+  "ai_metadata": {
+    "ai_categories": ["landscape"],
+    "ai_tags": ["mountains", "snow", "glaciers", "clouds", "sunset", "alpine", "nature", "scenic", "majestic"],
+    "ai_mood": "peaceful",
+    "ai_style": "professional",
+    "ai_quality_score": 0.88,
+    "ai_has_people": false,
+    "ai_has_text": false,
+    "ai_dominant_colors": ["blue", "orange", "white"],
+    "ai_composition": "rule-of-thirds"
+  }
+}
+```
+
+### Visual Search
+
+Search images by description:
+
+```bash
+curl -X POST "http://localhost:8084/api/v1/digital/search" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "user123",
+    "query": "peaceful mountain sunset landscape",
+    "search_options": {"top_k": 5}
+  }'
+```
+
+## Audio Processing
+
+### Store Audio
+
+```bash
+curl -X POST "http://localhost:8084/api/v1/digital/store" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "user123",
+    "content": "https://example.com/podcast.mp3",
+    "content_type": "audio",
+    "metadata": {
+      "title": "Tech Talk Episode 1"
+    }
+  }'
+```
+
+### Processing
+
+- Transcription using OpenAI Whisper
+- Speaker diarization (who said what)
+- Timestamp alignment
+- Chunking by natural pauses
+
+### Search Transcripts
+
+```bash
+curl -X POST "http://localhost:8084/api/v1/digital/search" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "user123",
+    "query": "discussion about machine learning",
+    "search_options": {"top_k": 5}
+  }'
+```
+
+## Video Processing
+
+### Store Video
+
+```bash
+curl -X POST "http://localhost:8084/api/v1/digital/store" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "user123",
+    "content": "https://example.com/tutorial.mp4",
+    "content_type": "video",
+    "metadata": {
+      "title": "Python Tutorial"
+    }
+  }'
+```
+
+### Processing
+
+| Feature | Description |
+|---------|-------------|
+| Frame Extraction | Key frames at regular intervals |
+| Scene Detection | Automatic scene boundaries |
+| Audio Track | Transcription of speech |
+| Visual Analysis | AI description of key frames |
+
+## Text Chunking
+
+### Chunking Strategies
+
+| Strategy | Description | Best For |
+|----------|-------------|----------|
+| `fixed` | Fixed character/token count | Simple documents |
+| `semantic` | Meaning-based boundaries | Technical docs |
+| `sentence` | Sentence-based splitting | Conversational |
+| `paragraph` | Paragraph boundaries | Structured text |
+
+### Configuration
+
+```python
+# In store request
+{
+    "content": "Your text content...",
+    "content_type": "text",
+    "chunking_options": {
+        "strategy": "semantic",
+        "chunk_size": 512,
+        "chunk_overlap": 50
+    }
+}
+```
+
+## Python SDK
+
+```python
+from isa_data import DigitalService
+
+service = DigitalService("http://localhost:8084")
+
+# Store PDF
+result = await service.store(
+    user_id="user123",
+    content="https://example.com/document.pdf",
+    content_type="pdf"
+)
+
+# Store image with AI analysis
+result = await service.store(
+    user_id="user123",
+    content="https://example.com/photo.jpg",
+    content_type="image"
+)
+
+# Access AI metadata
+print(result.ai_metadata.ai_tags)
+print(result.ai_metadata.ai_mood)
+
+# Search
+results = await service.search(
+    user_id="user123",
+    query="mountain landscape"
+)
+```
+
+## Use Cases
+
+### Document Knowledge Base
+
+```python
+# Build knowledge base from PDF documents
+documents = [
+    "https://example.com/manual1.pdf",
+    "https://example.com/manual2.pdf",
+    "https://example.com/guide.pdf"
+]
+
+for doc in documents:
+    await service.store(
+        user_id="kb_admin",
+        content=doc,
+        content_type="pdf",
+        metadata={"collection": "product_docs"}
+    )
+
+# Query the knowledge base
+response = await service.response(
+    user_id="user",
+    query="How do I configure the system?",
+    response_options={"rag_mode": "simple"}
+)
+```
+
+### Visual Asset Management
+
+```python
+# Index image library
+images = get_image_urls_from_storage()
+
+for img in images:
+    await service.store(
+        user_id="media_team",
+        content=img,
+        content_type="image"
+    )
+
+# Search by visual content
+results = await service.search(
+    user_id="designer",
+    query="professional headshot corporate"
+)
+
+# Filter by AI metadata
+results = await service.search(
+    user_id="designer",
+    query="high quality landscape",
+    filters={"ai_quality_score": {"$gte": 0.8}}
+)
+```
+
+### Meeting Transcription
+
+```python
+# Process meeting recording
+await service.store(
+    user_id="team",
+    content="https://storage.com/meeting-2024-01-15.mp4",
+    content_type="video",
+    metadata={"meeting": "Q1 Planning"}
+)
+
+# Find specific discussions
+results = await service.search(
+    user_id="manager",
+    query="budget allocation discussion"
+)
+```
+
+## Performance
+
+| Operation | Target |
+|-----------|--------|
+| PDF (10 pages) | < 10s |
+| Image analysis | < 3s |
+| Audio (10 min) | < 30s |
+| Video (5 min) | < 60s |
+
+## Next Steps
+
+- [Quick Start](./quickstart) - Get started
+- [RAG Patterns](./rag-patterns) - Knowledge retrieval
+- [Data Lake](./data-lake) - Zone management

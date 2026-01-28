@@ -1,0 +1,213 @@
+# Operations
+
+Scripts, monitoring, backup, and operational procedures.
+
+## Overview
+
+Operational tools include:
+
+- **Backup/Restore** - Data protection
+- **Port Forwarding** - Local access
+- **Monitoring** - Grafana, Loki, Prometheus
+- **Debugging** - Logs, traces, health checks
+
+## Scripts
+
+### Port Forwarding
+
+```bash
+# Forward all services
+./scripts/port-forward.sh
+
+# Infrastructure only
+./scripts/port-forward-infra.sh
+```
+
+### Service Ports
+
+| Service | Port |
+|---------|------|
+| APISIX Gateway | 9080 |
+| APISIX Admin | 9180 |
+| Consul | 8500 |
+| PostgreSQL | 5432 |
+| Redis | 6379 |
+| Neo4j | 7474, 7687 |
+| NATS | 4222 |
+| MQTT | 1883 |
+| MinIO | 9000, 9001 |
+| Qdrant | 6333 |
+| Grafana | 3000 |
+| Loki | 3100 |
+
+## Backup
+
+### Cluster Backup
+
+```bash
+./scripts/backup-cluster-data.sh
+```
+
+Backs up:
+- PostgreSQL databases
+- Redis RDB snapshots
+- MinIO buckets
+- Neo4j databases
+- Qdrant collections
+
+### Manual Backup
+
+```bash
+# PostgreSQL
+kubectl exec -it postgres-0 -n isa-cloud-staging -- \
+  pg_dump -U postgres isa_db | gzip > backup.sql.gz
+
+# Redis
+kubectl exec -it redis-master-0 -n isa-cloud-staging -- \
+  redis-cli BGSAVE
+
+# MinIO
+mc mirror minio/bucket ./backup/bucket
+```
+
+## Restore
+
+### Cluster Restore
+
+```bash
+./scripts/restore-cluster-data.sh backups/cluster-backup-20260114-120000
+```
+
+## Monitoring
+
+### Grafana Dashboards
+
+Access at `http://localhost:3000`:
+
+| Dashboard | Purpose |
+|-----------|---------|
+| **Infrastructure** | CPU, memory, disk usage |
+| **Services** | Request rate, latency, errors |
+| **Database** | Query performance, connections |
+| **APISIX** | Gateway metrics, routes |
+
+### Key Metrics
+
+```promql
+# Request rate
+sum(rate(apisix_http_status[5m])) by (service)
+
+# Error rate
+sum(rate(apisix_http_status{code=~"5.."}[5m])) / sum(rate(apisix_http_status[5m]))
+
+# Latency P99
+histogram_quantile(0.99, sum(rate(apisix_http_latency_bucket[5m])) by (le, service))
+```
+
+### Loki Log Queries
+
+```logql
+# Service errors
+{namespace="isa-cloud-staging", app="auth-service"} |= "error"
+
+# gRPC requests
+{namespace="isa-cloud-staging"} | json | method=~".*"
+
+# Slow requests
+{namespace="isa-cloud-staging"} | json | duration > 1s
+```
+
+## Health Checks
+
+### Service Health
+
+```bash
+# Check all pods
+kubectl get pods -n isa-cloud-staging
+
+# Check specific service
+kubectl describe pod auth-service-xxx -n isa-cloud-staging
+
+# View logs
+kubectl logs -f auth-service-xxx -n isa-cloud-staging
+```
+
+### Consul Health
+
+```bash
+# All services
+curl http://localhost:8500/v1/catalog/services | jq
+
+# Service health
+curl http://localhost:8500/v1/health/service/auth_service | jq
+
+# Critical services
+curl http://localhost:8500/v1/health/state/critical | jq
+```
+
+### gRPC Health
+
+```bash
+grpcurl -plaintext localhost:50061 grpc.health.v1.Health/Check
+```
+
+## Troubleshooting
+
+### Pod Not Starting
+
+```bash
+# Check events
+kubectl get events -n isa-cloud-staging --sort-by='.lastTimestamp'
+
+# Describe pod
+kubectl describe pod <pod-name> -n isa-cloud-staging
+
+# Check resource limits
+kubectl top pods -n isa-cloud-staging
+```
+
+### Service Not Reachable
+
+```bash
+# Check service exists
+kubectl get svc -n isa-cloud-staging
+
+# Check endpoints
+kubectl get endpoints <service-name> -n isa-cloud-staging
+
+# Test DNS
+kubectl run debug --rm -it --image=busybox -- nslookup <service-name>
+```
+
+## Alerting
+
+### Common Alerts
+
+| Alert | Condition | Action |
+|-------|-----------|--------|
+| ServiceDown | Pod not ready > 5m | Check pod logs, restart |
+| HighErrorRate | Error rate > 5% | Check service logs |
+| HighLatency | P99 > 1s | Check database, scale |
+| DiskFull | Usage > 90% | Cleanup or expand |
+| HighMemory | Usage > 85% | Scale or optimize |
+
+## Runbooks
+
+### Service Restart
+
+```bash
+kubectl rollout restart deployment/<service-name> -n isa-cloud-staging
+kubectl rollout status deployment/<service-name> -n isa-cloud-staging
+```
+
+### Clear Redis Cache
+
+```bash
+kubectl exec -it redis-master-0 -n isa-cloud-staging -- redis-cli FLUSHDB
+```
+
+## Next Steps
+
+- [Deployment](./deployment) - ArgoCD setup
+- [CI/CD](./cicd) - Automated pipelines
+- [Testing](./testing) - Test strategies

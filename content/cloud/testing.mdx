@@ -1,0 +1,177 @@
+# Testing
+
+Contract-driven development and testing strategies.
+
+## Overview
+
+Testing pyramid with 4 layers:
+
+1. **Unit Tests** - Business logic, no I/O
+2. **Integration Tests** - Mocked dependencies
+3. **API Tests** - Real gRPC endpoints
+4. **Smoke Tests** - E2E bash scripts
+
+## Test Contracts
+
+Located in `/tests/contracts/`:
+
+```
+tests/contracts/
+├── shared_system_contract.md
+├── redis/logic_contract.md
+├── postgres/logic_contract.md
+├── neo4j/logic_contract.md
+├── nats/logic_contract.md
+├── mqtt/logic_contract.md
+├── minio/logic_contract.md
+├── qdrant/logic_contract.md
+└── duckdb/logic_contract.md
+```
+
+## Contract Structure
+
+### Business Rules (BR-XXX)
+
+```markdown
+### BR-001: Key Isolation
+- All keys MUST be prefixed with org_id
+- Keys without org_id MUST be rejected
+- Format: {org_id}:{key}
+```
+
+### Edge Cases (EC-XXX)
+
+```markdown
+### EC-001: Empty Key
+- Empty string key MUST return InvalidArgument
+- Whitespace-only key MUST return InvalidArgument
+```
+
+### Error Handling (ER-XXX)
+
+```markdown
+### ER-001: Connection Failure
+- MUST return Unavailable status
+- MUST include retry-after hint
+- MUST log error with correlation ID
+```
+
+## Unit Tests
+
+### Go Unit Test
+
+```go
+func TestSetKey(t *testing.T) {
+    mockRepo := mocks.NewMockRepository(t)
+    service := NewRedisService(mockRepo)
+
+    mockRepo.EXPECT().
+        Set(ctx, "org_123:key", "value", time.Hour).
+        Return(nil)
+
+    err := service.Set(ctx, "org_123", "key", "value", time.Hour)
+    assert.NoError(t, err)
+}
+```
+
+### Table-Driven Tests
+
+```go
+func TestKeyValidation(t *testing.T) {
+    tests := []struct {
+        name    string
+        key     string
+        wantErr error
+    }{
+        {"valid key", "user:123", nil},
+        {"empty key", "", ErrInvalidKey},
+        {"whitespace key", "   ", ErrInvalidKey},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            err := validateKey(tt.key)
+            assert.ErrorIs(t, err, tt.wantErr)
+        })
+    }
+}
+```
+
+## Integration Tests
+
+### With Test Containers
+
+```go
+// +build integration
+
+func TestRedisIntegration(t *testing.T) {
+    ctx := context.Background()
+
+    container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+        ContainerRequest: testcontainers.ContainerRequest{
+            Image:        "redis:7-alpine",
+            ExposedPorts: []string{"6379/tcp"},
+            WaitingFor:   wait.ForListeningPort("6379/tcp"),
+        },
+        Started: true,
+    })
+    require.NoError(t, err)
+    defer container.Terminate(ctx)
+
+    // Test operations
+    err = client.Set(ctx, "key", "value")
+    assert.NoError(t, err)
+}
+```
+
+## Running Tests
+
+### Make Commands
+
+```bash
+# All unit tests
+make test
+
+# Integration tests
+make test-integration
+
+# API tests (requires running services)
+make test-api
+
+# Smoke tests
+make test-smoke
+
+# With coverage
+make test-coverage
+```
+
+### Go Commands
+
+```bash
+# Unit tests
+go test -v -short ./...
+
+# Integration tests
+go test -v -tags=integration ./...
+
+# Coverage report
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out
+```
+
+## Test Coverage
+
+### Coverage Requirements
+
+| Component | Minimum |
+|-----------|---------|
+| Service Layer | 80% |
+| Repository Layer | 70% |
+| Handler Layer | 60% |
+| Overall | 75% |
+
+## Next Steps
+
+- [CI/CD](./cicd) - Automated testing in pipelines
+- [Operations](./operations) - Monitoring & debugging
+- [gRPC Services](./grpc-services) - Service implementation

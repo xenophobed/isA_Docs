@@ -1,0 +1,162 @@
+# Organizations
+
+Multi-tenant organizations, family sharing, and invitations.
+
+## Overview
+
+Social and organizational features are handled by three services:
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| organization_service | 8212 | Multi-tenant, hierarchies, family sharing |
+| invitation_service | 8213 | Invites, sharing links |
+| membership_service | 8250 | Loyalty tiers, benefits |
+
+## Organization Service (8212)
+
+### Create Organization
+
+```bash
+curl -X POST "http://localhost:8212/api/v1/organizations" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Acme Corp",
+    "type": "business",
+    "settings": {
+      "allow_member_invites": true,
+      "default_role": "member"
+    }
+  }'
+```
+
+### Organization Types
+
+| Type | Description | Features |
+|------|-------------|----------|
+| `personal` | Individual workspace | Single owner |
+| `family` | Family sharing | Shared storage, albums |
+| `team` | Small team | Up to 10 members |
+| `business` | Business org | Unlimited, advanced RBAC |
+| `enterprise` | Enterprise | SSO, audit, compliance |
+
+### Add Member
+
+```bash
+curl -X POST "http://localhost:8212/api/v1/organizations/org_abc123/members" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": "user_456", "role": "editor"}'
+```
+
+### List Members
+
+```bash
+curl "http://localhost:8212/api/v1/organizations/org_abc123/members" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+## Family Sharing
+
+### Create Family
+
+```bash
+curl -X POST "http://localhost:8212/api/v1/organizations" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Smith Family",
+    "type": "family",
+    "settings": {
+      "shared_storage": true,
+      "shared_albums": true
+    }
+  }'
+```
+
+### Family Roles
+
+| Role | Permissions |
+|------|-------------|
+| `organizer` | Full control, billing, add/remove members |
+| `adult` | Full access, can manage children |
+| `teen` | Limited access, parental controls |
+| `child` | Restricted, parent approval needed |
+
+## Invitation Service (8213)
+
+### Create Invite Link
+
+```bash
+curl -X POST "http://localhost:8213/api/v1/invitations/link" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "organization_id": "org_abc123",
+    "role": "member",
+    "max_uses": 10,
+    "expires_in_days": 7
+  }'
+```
+
+### Accept Invitation
+
+```bash
+curl -X POST "http://localhost:8213/api/v1/invitations/inv_xyz789/accept" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+## Membership Service (8250)
+
+### Get Membership Status
+
+```bash
+curl "http://localhost:8250/api/v1/membership/me" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Membership Tiers
+
+| Tier | Points | Benefits |
+|------|--------|----------|
+| Bronze | 0 | Base features |
+| Silver | 5,000 | 10% discount, 5GB extra storage |
+| Gold | 15,000 | 20% discount, priority support |
+| Platinum | 25,000 | 30% discount, early access |
+
+## Python SDK
+
+```python
+from isa_user import OrganizationClient, InvitationClient
+
+orgs = OrganizationClient("http://localhost:8212")
+invites = InvitationClient("http://localhost:8213")
+
+# Create organization
+org = await orgs.create(
+    token=access_token,
+    name="My Team",
+    type="team"
+)
+
+# Add member
+await orgs.add_member(
+    token=access_token,
+    org_id=org.organization_id,
+    user_id="user_456",
+    role="editor"
+)
+
+# Create invite link
+link = await invites.create_link(
+    token=access_token,
+    org_id=org.organization_id,
+    max_uses=5
+)
+```
+
+## Next Steps
+
+- [Devices](./devices) - IoT management
+- [Memory](./memory) - AI cognitive memory
+- [Storage](./storage) - File management

@@ -1,0 +1,198 @@
+# Deployment
+
+ArgoCD GitOps deployment and Helm chart management.
+
+## Overview
+
+isA Cloud uses GitOps with:
+
+- **ArgoCD** - Continuous deployment
+- **Helm** - Package management
+- **Multi-environment** - dev, staging, production
+
+## Environments
+
+| Environment | Cluster | Namespace | Branch |
+|-------------|---------|-----------|--------|
+| **Local** | KIND | isa-cloud-staging | develop |
+| **Staging** | EKS | isa-cloud-staging | main |
+| **Production** | EKS/GKE | isa-cloud-production | production |
+
+## GitOps Workflow
+
+```
+Developer Push Code
+        │
+        ▼
+GitHub Actions CI
+  ├─ Lint & Test
+  ├─ Build Docker Images
+  ├─ Push to Harbor/ECR
+  └─ Security Scan (Trivy)
+        │
+        ▼
+Update Image Tag in Git
+        │
+        ▼
+ArgoCD Detects Changes (30s)
+        │
+        ▼
+ArgoCD Syncs to Kubernetes
+        │
+        ▼
+Rolling Update
+        │
+        ▼
+Service Registers to Consul
+        │
+        ▼
+APISIX Syncs Routes
+```
+
+## ArgoCD Applications
+
+### App-of-Apps Pattern
+
+```
+deployments/argocd/
+├── applications/              # Root applications
+│   ├── isa-cloud-dev.yaml
+│   ├── isa-cloud-staging.yaml
+│   └── isa-cloud-production.yaml
+└── apps/                      # Child applications
+    ├── dev/
+    ├── staging/
+    └── production/
+```
+
+### Root Application
+
+```yaml
+# deployments/argocd/applications/isa-cloud-staging.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: isa-cloud-staging
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/org/isA_Cloud
+    targetRevision: main
+    path: deployments/argocd/apps/staging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: isa-cloud-staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+```
+
+## Helm Charts
+
+### Values File
+
+```yaml
+# deployments/kubernetes/staging/values/auth-service.yaml
+replicaCount: 2
+
+image:
+  repository: harbor.isa.io/isa-cloud/auth-service
+  tag: "1.0.0"
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 8201
+
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "100m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
+
+consul:
+  enabled: true
+  serviceName: auth_service
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilization: 70
+```
+
+## Deploy Commands
+
+### Deploy Script
+
+```bash
+# Deploy single service
+./deployments/scripts/deploy.sh auth staging
+
+# Deploy all user services
+./deployments/scripts/deploy.sh user all staging
+
+# Deploy everything
+./deployments/scripts/deploy.sh all staging
+```
+
+### Manual Helm Deploy
+
+```bash
+helm upgrade --install auth-service \
+  deployments/charts/isa-service \
+  -f deployments/kubernetes/staging/values/auth-service.yaml \
+  -n isa-cloud-staging
+```
+
+## Secrets Management
+
+### External Secrets (Production)
+
+```yaml
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: database-secrets
+spec:
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: SecretStore
+  target:
+    name: database-secrets
+  data:
+    - secretKey: host
+      remoteRef:
+        key: isa-cloud/production/postgres
+        property: host
+```
+
+## Rollback
+
+### ArgoCD Rollback
+
+```bash
+argocd app rollback auth-service --revision 5
+```
+
+### Helm Rollback
+
+```bash
+helm rollback auth-service 1 -n isa-cloud-staging
+```
+
+### kubectl Rollback
+
+```bash
+kubectl rollout undo deployment/auth-service -n isa-cloud-staging
+```
+
+## Next Steps
+
+- [CI/CD](./cicd) - GitHub Actions pipelines
+- [Testing](./testing) - Contract-driven development
+- [Operations](./operations) - Monitoring & scripts
