@@ -1,0 +1,242 @@
+# Cloud OS
+
+VM management service using Firecracker microVMs.
+
+## Overview
+
+Cloud OS provides isolated Linux environments for AI agents via FastAPI REST API.
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                   FastAPI REST API                        │
+│                      (Port 8001)                          │
+└──────────────────────────────────────────────────────────┘
+                           ↓
+┌──────────────────────────────────────────────────────────┐
+│                   VM Service (Layer 4)                    │
+│                  High-level business logic                │
+└──────────────────────────────────────────────────────────┘
+                           ↓
+┌──────────────────────────────────────────────────────────┐
+│                Container gRPC Client                      │
+│              Connects to container-grpc                   │
+└──────────────────────────────────────────────────────────┘
+                           ↓
+┌──────────────────────────────────────────────────────────┐
+│              Container gRPC Service (Go)                  │
+│            Manages Firecracker VMs via Ignite            │
+└──────────────────────────────────────────────────────────┘
+```
+
+## Features
+
+### VM Lifecycle
+- Create VM with resource limits
+- Start/Stop/Delete VMs
+- Get VM status
+- List VMs with filtering
+
+### Command Execution
+- Execute commands in VMs
+- Custom environment variables
+- Working directory control
+- TTY support
+
+### File Operations
+- Read files from VMs
+- Write files to VMs
+- File permissions control
+
+## API Endpoints
+
+### Create VM
+
+```bash
+POST /api/v1/vms
+```
+
+```json
+{
+  "user_id": "user123",
+  "image": "ubuntu:22.04",
+  "limits": {
+    "cpu_count": 2,
+    "memory_mb": 2048,
+    "disk_size_gb": 10
+  }
+}
+```
+
+### Execute Command
+
+```bash
+POST /api/v1/vms/{vm_id}/execute
+```
+
+```json
+{
+  "command": ["python3", "--version"],
+  "env": {"MY_VAR": "value"},
+  "working_dir": "/home/user",
+  "tty": false
+}
+```
+
+### Read File
+
+```bash
+POST /api/v1/vms/{vm_id}/files/read
+```
+
+```json
+{
+  "path": "/home/user/myfile.txt"
+}
+```
+
+### Write File
+
+```bash
+POST /api/v1/vms/{vm_id}/files/write
+```
+
+```json
+{
+  "path": "/home/user/myfile.txt",
+  "content": "Hello, World!",
+  "mode": "0644"
+}
+```
+
+### List VMs
+
+```bash
+GET /api/v1/vms?user_id=user123
+```
+
+### Get VM Status
+
+```bash
+GET /api/v1/vms/{vm_id}
+```
+
+### Delete VM
+
+```bash
+DELETE /api/v1/vms/{vm_id}
+```
+
+## Usage Examples
+
+### Python Client
+
+```python
+import httpx
+
+class CloudOSClient:
+    def __init__(self, base_url: str = "http://localhost:8001"):
+        self.base_url = base_url
+
+    async def create_vm(self, user_id: str, image: str = "ubuntu:22.04"):
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.base_url}/api/v1/vms",
+                json={
+                    "user_id": user_id,
+                    "image": image,
+                    "limits": {
+                        "cpu_count": 2,
+                        "memory_mb": 2048,
+                        "disk_size_gb": 10
+                    }
+                }
+            )
+            return response.json()
+
+    async def execute(self, vm_id: str, command: list):
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.base_url}/api/v1/vms/{vm_id}/execute",
+                json={"command": command}
+            )
+            return response.json()
+
+    async def read_file(self, vm_id: str, path: str):
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.base_url}/api/v1/vms/{vm_id}/files/read",
+                json={"path": path}
+            )
+            return response.json()
+
+    async def write_file(self, vm_id: str, path: str, content: str):
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.base_url}/api/v1/vms/{vm_id}/files/write",
+                json={"path": path, "content": content}
+            )
+            return response.json()
+```
+
+### Integration with MCP
+
+```python
+from mcp.server import Server
+
+@server.tool()
+async def create_vm(user_id: str, image: str = "ubuntu:22.04"):
+    """Create a VM for the user"""
+    client = CloudOSClient()
+    return await client.create_vm(user_id, image)
+
+@server.tool()
+async def run_in_vm(vm_id: str, command: str):
+    """Execute command in VM"""
+    client = CloudOSClient()
+    return await client.execute(vm_id, command.split())
+```
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `8001` | FastAPI server port |
+| `CONTAINER_GRPC_HOST` | `localhost` | Container gRPC host |
+| `CONTAINER_GRPC_PORT` | `50064` | Container gRPC port |
+
+## VM Images
+
+| Image | Description |
+|-------|-------------|
+| `ubuntu:22.04` | Ubuntu 22.04 LTS |
+| `ubuntu:20.04` | Ubuntu 20.04 LTS |
+| `python:3.11` | Python 3.11 environment |
+| `node:18` | Node.js 18 environment |
+
+## Resource Limits
+
+| Limit | Min | Max | Default |
+|-------|-----|-----|---------|
+| `cpu_count` | 1 | 8 | 2 |
+| `memory_mb` | 512 | 16384 | 2048 |
+| `disk_size_gb` | 1 | 100 | 10 |
+
+## Troubleshooting
+
+### "VM service not initialized"
+- Ensure container-grpc service is running
+- Check `CONTAINER_GRPC_HOST` and `CONTAINER_GRPC_PORT`
+
+### "Container gRPC service is not available"
+- Verify container-grpc is listening on port 50064
+- Check network connectivity
+
+## Next Steps
+
+- [Pool Manager](./pool-manager) - Resource gateway
+- [Python REPL](./python-repl) - Lightweight code execution
+- [Deployment](./deployment) - Production deployment

@@ -1,0 +1,295 @@
+# Web Automation
+
+Intelligent web processing microservice with crawling, search, and automation.
+
+## Overview
+
+Web Services provides four core capabilities:
+
+| Feature | Description | Test Status |
+|---------|-------------|-------------|
+| Web Crawling | Multi-format content extraction | ✅ 100% |
+| Web Search | Multi-engine with AI summaries | ✅ 100% |
+| Deep Search | Multi-strategy RAG search | ✅ 100% |
+| Web Automation | LLM-driven browser control | ✅ 100% |
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Layer 4: Services                        │
+│  - WebAutomationService  - WebCrawlService  - WebSearchService│
+└─────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│                      Layer 3: Core                           │
+│  - BrowserService  - PageAnalyzer  - ActionCoordinator      │
+└─────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│                     Layer 2: Engines                         │
+│  - ExtractionEngine  - DetectionEngine  - ActionEngine      │
+└─────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│                    Layer 1: Strategies                       │
+│  - Detection: interactive_extractor                          │
+│  - Extraction: readability, jina_reader                      │
+│  - Actions: click, type, navigate, wait                      │
+│  - Search: brave_search, parallel_search                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Web Crawling
+
+Extract content from web pages in multiple formats.
+
+### Endpoint
+
+```bash
+POST /api/v1/crawl
+```
+
+### Request
+
+```json
+{
+  "url": "https://example.com",
+  "output_format": "markdown",
+  "extract_links": true,
+  "extract_images": true
+}
+```
+
+### Output Formats
+
+| Format | Description |
+|--------|-------------|
+| `markdown` | Clean markdown text |
+| `text` | Plain text |
+| `html` | Raw HTML |
+| `structured` | Structured data with metadata |
+
+### Example
+
+```python
+async def crawl_page(url: str):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "http://localhost:8000/api/v1/crawl",
+            json={
+                "url": url,
+                "output_format": "markdown",
+                "extract_links": True
+            }
+        )
+        return response.json()
+```
+
+## Web Search
+
+Search the web with AI-powered summaries.
+
+### Endpoint
+
+```bash
+POST /api/v1/search
+```
+
+### Request
+
+```json
+{
+  "query": "Python async programming",
+  "freshness": "week",
+  "count": 10,
+  "goggle": "tech",
+  "summarize": true
+}
+```
+
+### Freshness Options
+
+| Option | Description |
+|--------|-------------|
+| `hour` | Last hour |
+| `day` | Last 24 hours |
+| `week` | Last 7 days |
+| `month` | Last 30 days |
+| `year` | Last year |
+
+### Goggle Modes
+
+| Mode | Description |
+|------|-------------|
+| `academic` | Academic sources |
+| `news` | News sources |
+| `tech` | Technical resources |
+
+## Deep Search
+
+Multi-strategy search with RAG capabilities.
+
+### Endpoint
+
+```bash
+POST /api/v1/deep-search
+```
+
+### Request
+
+```json
+{
+  "query": "How to implement async generators in Python",
+  "max_iterations": 3,
+  "rag_mode": "auto"
+}
+```
+
+### Query Types
+
+| Type | Description |
+|------|-------------|
+| `TECHNICAL` | Technical docs, programming |
+| `ACADEMIC` | Research papers, studies |
+| `LOCAL` | Local businesses, places |
+| `NEWS` | Current events |
+| `PRODUCT` | Product comparisons |
+
+### RAG Modes
+
+| Mode | Description |
+|------|-------------|
+| `naive` | Simple retrieval |
+| `crag` | Corrective RAG |
+| `self_rag` | Self-reflective RAG |
+| `auto` | Automatic selection |
+
+## Web Automation
+
+LLM-driven browser automation.
+
+### Endpoint
+
+```bash
+POST /api/v1/automation/execute
+```
+
+### Request
+
+```json
+{
+  "url": "https://example.com",
+  "task": "Search for 'Python tutorials' and click the first result",
+  "mode": "intelligent"
+}
+```
+
+### Modes
+
+| Mode | Description | LLM Cost |
+|------|-------------|----------|
+| `dom_only` | Pure DOM extraction | Zero |
+| `dom_first` | DOM with LLM fallback | Low |
+| `intelligent` | Full LLM planning | Higher |
+
+### Supported Actions
+
+| Action | Description |
+|--------|-------------|
+| `click` | Click element |
+| `type` | Type text |
+| `navigate` | Go to URL |
+| `wait` | Wait for condition |
+| `screenshot` | Capture screen |
+| `extract` | Extract data |
+
+### Example
+
+```python
+async def automate_task(url: str, task: str):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "http://localhost:8000/api/v1/automation/execute",
+            json={
+                "url": url,
+                "task": task,
+                "mode": "intelligent"
+            }
+        )
+        return response.json()
+
+# Example: Login flow
+result = await automate_task(
+    "https://example.com/login",
+    "Fill in username 'test@example.com' and password 'password123', then click submit"
+)
+```
+
+## Screenshots
+
+### Endpoint
+
+```bash
+POST /api/v1/screenshot
+```
+
+### Request
+
+```json
+{
+  "url": "https://example.com",
+  "full_page": true,
+  "format": "png"
+}
+```
+
+## Integration with MCP
+
+```python
+@mcp.tool()
+async def web_crawl(url: str, format: str = "markdown"):
+    """Crawl webpage and extract content"""
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "http://localhost:8000/api/v1/crawl",
+            json={"url": url, "output_format": format}
+        )
+        return response.json()
+
+@mcp.tool()
+async def web_search(query: str, count: int = 5):
+    """Search the web"""
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "http://localhost:8000/api/v1/search",
+            json={"query": query, "count": count}
+        )
+        return response.json()
+
+@mcp.tool()
+async def browser_automate(url: str, task: str):
+    """Automate browser task"""
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "http://localhost:8000/api/v1/automation/execute",
+            json={"url": url, "task": task}
+        )
+        return response.json()
+```
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `BRAVE_API_KEY` | Brave Search API key |
+| `BROWSERBASE_API_KEY` | Browserbase API key |
+| `OPENAI_API_KEY` | OpenAI for LLM automation |
+
+## Next Steps
+
+- [Pool Manager](./pool-manager) - Resource gateway
+- [Python REPL](./python-repl) - Code execution
+- [Quick Start](./quickstart) - Getting started

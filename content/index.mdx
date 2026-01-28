@@ -1,0 +1,35 @@
+# isA Platform
+
+Build, deploy, and scale intelligent AI agents. From SDK to production in minutes.
+
+## Products
+
+| Product | Description |
+|---------|-------------|
+| [**Agent SDK**](/agent-sdk) | Build custom AI agents with Python |
+| [**MCP**](/mcp) | Model Context Protocol - 50+ tools |
+| [**Model**](/model) | LLM services with unified API |
+| [**Platform**](/platform) | Deploy to isA Cloud |
+| [**User**](/user) | Authentication and authorization |
+| [**Data**](/data) | Storage and pipelines |
+
+## Pre-built Agents
+
+- [**isA Vibe**](/agents/vibe) - Coding assistant (like Claude Code)
+- [**isA Creative**](/agents/creative) - Content creation
+- [**isA Agent**](/agents/default) - General-purpose agent
+
+## Quick Start
+
+```bash
+pip install isa-agent-sdk
+```
+
+```python
+from isa_agent_sdk import query
+
+async for msg in query("Hello, world!"):
+    print(msg.content, end="")
+```
+
+[Get started with Agent SDK →](/agent-sdk)

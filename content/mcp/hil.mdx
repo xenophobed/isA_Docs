@@ -1,0 +1,88 @@
+# Human-in-the-Loop (HIL)
+
+Four interaction patterns for human oversight in AI workflows.
+
+## Overview
+
+HIL enables AI agents to request human input, approval, or review during execution.
+
+| Method | Status Returned | Use Case |
+|--------|-----------------|----------|
+| Authorization | `authorization_requested` | Approve/reject actions |
+| Input | `human_input_requested` | Collect credentials or data |
+| Review | `human_input_requested` | Review and edit content |
+| Combined | `authorization_requested` | Input + authorization |
+
+## 1. Authorization
+
+Request approval for an action.
+
+```python
+result = await client.call_tool("test_authorization_low_risk", {})
+
+if result.get('status') == 'authorization_requested':
+    print(f"Action: {result['data']['action']}")
+    print(f"Risk Level: {result['data']['risk_level']}")  # low, medium, high
+    print(f"Options: {result['options']}")  # ['approve', 'reject']
+```
+
+## 2. Input Collection
+
+Request user input.
+
+```python
+result = await client.call_tool("test_input_credentials", {})
+
+if result.get('status') == 'human_input_requested':
+    print(f"Prompt: {result['data']['prompt']}")
+    print(f"Input Type: {result['data']['input_type']}")  # credentials, text
+    print(f"Options: {result['options']}")  # ['submit', 'skip', 'cancel']
+```
+
+## 3. Content Review
+
+Request review and optional editing.
+
+```python
+result = await client.call_tool("test_review_execution_plan", {})
+
+if result.get('status') == 'human_input_requested':
+    print(f"Content Type: {result['data']['content_type']}")
+    print(f"Editable: {result['data']['editable']}")
+    print(f"Options: {result['options']}")  # ['approve', 'edit', 'reject']
+```
+
+## 4. Combined Input + Authorization
+
+Request input and approval in one step.
+
+```python
+result = await client.call_tool("test_input_with_auth_payment", {})
+
+if result.get('status') == 'authorization_requested'):
+    print(f"Input Prompt: {result['data']['input_prompt']}")
+    print(f"Authorization Reason: {result['data']['authorization_reason']}")
+    print(f"Risk Level: {result['data']['risk_level']}")
+```
+
+## Parsing HIL Responses
+
+```python
+# HIL responses use structuredContent
+if "structuredContent" in response["result"]:
+    hil_data = response["result"]["structuredContent"]["result"]
+    status = hil_data['status']
+    hil_type = hil_data['hil_type']
+    options = hil_data['options']
+```
+
+## Best Practices
+
+1. **Always check HIL status** before processing
+2. **Use appropriate risk levels** (low, medium, high)
+3. **Provide clear context** in authorization requests
+
+## Next Steps
+
+- [Progress Tracking](./progress) - Monitor operations
+- [Quick Start](./quickstart) - Basic setup

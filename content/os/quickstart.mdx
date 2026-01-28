@@ -1,0 +1,157 @@
+# Quick Start
+
+Get started with isA OS services.
+
+## Prerequisites
+
+- Python 3.11+
+- Docker (optional, for some services)
+- Access to isA infrastructure (for Cloud OS)
+
+## Starting Services
+
+### Pool Manager
+
+```bash
+cd os_services/pool_manager
+pip install -r requirements.txt
+python main.py
+# Runs on http://localhost:8090
+```
+
+### Cloud OS
+
+```bash
+cd os_services/cloud_os
+pip install -r requirements.txt
+
+# Requires container-grpc service running
+CONTAINER_GRPC_HOST=localhost CONTAINER_GRPC_PORT=50064 python main.py
+# Runs on http://localhost:8001
+```
+
+### Desktop Agent
+
+```bash
+cd os_services/desktop_os
+pip install -e .
+
+# Run with your user ID
+isa-desktop --owner YOUR_USER_ID --server http://pool-manager:8090
+```
+
+### Python REPL
+
+```bash
+cd os_services/python_repl
+pip install -r requirements.txt
+
+# Configure provider
+export PYTHON_REPL_PROVIDER=local  # or e2b
+python main.py
+# Runs on http://localhost:8001
+```
+
+### Web Services
+
+```bash
+cd web_services
+pip install -r requirements.txt
+python main.py
+# Runs on http://localhost:8000
+```
+
+## Basic Usage
+
+### Acquire Resource via Pool Manager
+
+```python
+import httpx
+
+async def acquire_vm():
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "http://localhost:8090/pools/vm/acquire",
+            json={"user_id": "user123"}
+        )
+        return response.json()
+```
+
+### Execute Code in Python REPL
+
+```python
+import httpx
+
+async def execute_code(code: str):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "http://localhost:8001/execute",
+            json={"code": code, "timeout": 30}
+        )
+        return response.json()
+
+result = await execute_code("print('Hello, World!')")
+# {"stdout": "Hello, World!\n", "success": true}
+```
+
+### Create VM in Cloud OS
+
+```python
+import httpx
+
+async def create_vm(user_id: str):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "http://localhost:8001/api/v1/vms",
+            json={
+                "user_id": user_id,
+                "image": "ubuntu:22.04",
+                "limits": {
+                    "cpu_count": 2,
+                    "memory_mb": 2048,
+                    "disk_size_gb": 10
+                }
+            }
+        )
+        return response.json()
+```
+
+### Web Crawling
+
+```python
+import httpx
+
+async def crawl_url(url: str):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "http://localhost:8000/api/v1/crawl",
+            json={
+                "url": url,
+                "output_format": "markdown"
+            }
+        )
+        return response.json()
+```
+
+## Health Checks
+
+```bash
+# Pool Manager
+curl http://localhost:8090/health
+
+# Cloud OS
+curl http://localhost:8001/health
+
+# Python REPL
+curl http://localhost:8001/health
+
+# Web Services
+curl http://localhost:8000/health
+```
+
+## Next Steps
+
+- [Pool Manager](./pool-manager) - Resource gateway details
+- [Cloud OS](./cloud-os) - VM management
+- [Python REPL](./python-repl) - Code execution
+- [Web Automation](./web-automation) - Web services

@@ -1,0 +1,154 @@
+# ISA MCP Platform
+
+Enterprise-grade Model Context Protocol (MCP) Server with intelligent tool discovery.
+
+## Overview
+
+ISA MCP is a unified platform for registering, discovering, and invoking MCP tools with skill-based hierarchical search.
+
+### Core Value Propositions
+
+| Value | Description |
+|-------|-------------|
+| **Unified Registry** | Single API for all tools, multi-server aggregation |
+| **Intelligent Discovery** | Skill-based routing, semantic search |
+| **Context Optimization** | Minimal context output, lazy loading |
+| **Full Lifecycle** | Register → Discover → Invoke → Monitor |
+
+## Platform Capabilities
+
+| Feature | Count | Description |
+|---------|-------|-------------|
+| Tools | 88+ | Executable MCP tools |
+| Prompts | 50 | Reusable prompt templates |
+| Resources | 9 | Static and dynamic resources |
+| HIL Methods | 4 | Human interaction patterns |
+| Skills | 6 categories | Tool classification |
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         ISA MCP PLATFORM                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │    TOOLS     │  │   PROMPTS    │  │  RESOURCES   │          │
+│  │     88+      │  │     50       │  │      9       │          │
+│  └──────────────┘  └──────────────┘  └──────────────┘          │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │                    SERVICES                               │  │
+│  │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ │  │
+│  │  │ Tool   │ │ Search │ │ Skill  │ │  HIL   │ │Progress│ │  │
+│  │  │Service │ │Service │ │Service │ │Service │ │Service │ │  │
+│  │  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘ │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │                   AGGREGATOR                              │  │
+│  │          Connect to External MCP Servers                  │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Key Features
+
+### Skill-Based Search
+
+Tools are classified into skills for efficient discovery:
+
+```
+Skills (6 Categories)
+├── Productivity (calendar, task, note, time)
+├── Communication (email, messaging, notifications)
+├── Data (query, analysis, visualization, export)
+├── File (operations, documents, media, cloud)
+├── Integration (API, webhooks, third-party)
+└── System (config, monitoring, security, admin)
+```
+
+### Semantic Search
+
+Find tools using natural language:
+
+```python
+results = await search("schedule a meeting with John")
+# Returns: create_event, send_invite, check_availability
+```
+
+### Human-in-the-Loop (HIL)
+
+Four interaction patterns:
+
+| Method | Use Case |
+|--------|----------|
+| Authorization | Approve/reject actions |
+| Input | Collect user credentials or data |
+| Review | Review and edit content |
+| Combined | Input + authorization together |
+
+### Server Aggregation
+
+Connect to external MCP servers (GitHub, Slack, custom) and aggregate their tools.
+
+## MCP Components
+
+### Tools
+
+Executable functions exposed via MCP protocol.
+
+```python
+result = await client.call_tool("get_weather", {"city": "Tokyo"})
+```
+
+### Prompts
+
+Reusable text templates for AI workflows.
+
+```python
+prompt = await client.get_prompt("rag_search", {
+    "query": "What is AI?",
+    "context": "Learning about AI"
+})
+```
+
+### Resources
+
+Static and dynamic data sources.
+
+```python
+content = await client.read_resource("guardrail://config/pii")
+```
+
+## API Endpoints
+
+Base URL: `http://localhost:8081`
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/mcp` | POST | MCP JSON-RPC endpoint |
+| `/health` | GET | Server health check |
+| `/search` | POST | Semantic search |
+| `/progress/{id}/stream` | GET | SSE progress stream |
+| `/api/v1/skills/*` | - | Skill management |
+| `/api/v1/aggregator/*` | - | Server aggregation |
+
+## Documentation
+
+### Getting Started
+- [Quick Start](./quickstart) - Installation and basic usage
+- [Configuration](./configuration) - Server configuration
+
+### Core Components
+- [Tools](./tools) - Creating and using tools
+- [Prompts](./prompts) - Creating and using prompts
+- [Resources](./resources) - Creating and using resources
+- [Skills](./skills) - Skill-based classification
+
+### Advanced Features
+- [Search & Discovery](./search) - Tool discovery
+- [Human-in-the-Loop](./hil) - Human interaction
+- [Progress Tracking](./progress) - Progress monitoring
+- [Server Aggregation](./aggregator) - External servers

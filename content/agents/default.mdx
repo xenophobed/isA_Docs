@@ -1,0 +1,89 @@
+# isA Agent
+
+The default general-purpose AI agent.
+
+## Overview
+
+isA Agent is the default agent built on the isA Agent SDK. It provides a balanced set of capabilities for general-purpose tasks.
+
+## Features
+
+### Conversation
+- Natural language understanding
+- Context-aware responses
+- Multi-turn conversations
+- Memory and recall
+
+### Task Execution
+- File operations
+- Web search and research
+- Data processing
+- Automation
+
+### Tool Access
+- 50+ tools via MCP
+- Custom tool integration
+- Tool chaining
+- Parallel execution
+
+### Customization
+- Configurable skills
+- Adjustable behavior
+- Custom prompts
+- Fine-tuned responses
+
+## Quick Start
+
+```bash
+# Install isA Agent CLI
+pip install isa-agent
+
+# Start chatting
+isa-agent "Hello, help me with a task"
+```
+
+## Skills
+
+Available skills for customization:
+- `general` - General conversation
+- `analyst` - Data analysis
+- `planner` - Task planning
+- `researcher` - Research tasks
+
+## Configuration
+
+```yaml
+# .isa-agent.yaml
+skills:
+  - general
+  - analyst
+allowed_tools:
+  - web_search
+  - read_file
+max_iterations: 30
+```
+
+## Use Cases
+
+- Personal assistant tasks
+- Research and information gathering
+- Simple automation
+- Learning and exploration
+
+## Building Custom Agents
+
+isA Agent is a starting point. Build your own specialized agents:
+
+```python
+from isa_agent_sdk import query, ISAAgentOptions
+
+options = ISAAgentOptions(
+    skills=["your-custom-skill"],
+    allowed_tools=["your-tools"]
+)
+
+async for msg in query("Your prompt", options=options):
+    print(msg.content)
+```
+
+See the [Agent SDK documentation](/agent-sdk) for more.

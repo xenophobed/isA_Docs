@@ -1,0 +1,50 @@
+# User Service
+
+Authentication and authorization for your agents.
+
+## Overview
+
+The User Service provides identity management for both end-users and developers accessing the isA platform.
+
+## Features
+
+### Authentication
+- API Key authentication
+- OAuth 2.0 / OpenID Connect
+- Session management
+- Multi-factor authentication
+
+### Authorization
+- Role-based access control (RBAC)
+- Resource-level permissions
+- Per-user tool restrictions
+- Rate limiting by user tier
+
+### User Management
+- User registration and profiles
+- Team and organization support
+- Usage tracking and quotas
+
+## Quick Start
+
+```python
+from isa_agent_sdk import query, ISAAgentOptions
+
+# Authenticate via API key (set ISA_API_KEY env var)
+# or pass user_id for user-specific context
+
+options = ISAAgentOptions(
+    user_id="user-123"  # Associates session with user
+)
+
+async for msg in query("Hello!", options=options):
+    print(msg.content, end="")
+```
+
+## Coming Soon
+
+Full documentation including:
+- OAuth integration guide
+- Custom identity providers
+- Webhook notifications
+- Audit logging

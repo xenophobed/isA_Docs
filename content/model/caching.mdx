@@ -1,0 +1,333 @@
+# Caching
+
+Optimize costs and latency with intelligent LLM response caching.
+
+## Overview
+
+isA Model implements a two-layer caching system:
+
+1. **Exact Match Cache** (Redis) - Fast lookup for identical requests
+2. **Semantic Cache** (Qdrant) - Similarity-based matching for related queries
+
+```
+Request → Exact Match? → Yes → Return cached
+              ↓ No
+         Semantic Match? → Yes → Return similar cached
+              ↓ No
+         Call LLM → Cache response → Return
+```
+
+## How It Works
+
+### Layer 1: Exact Match (Redis)
+
+- Hash-based lookup of request parameters
+- Sub-millisecond response time
+- Configurable TTL (default: 1 hour)
+
+```python
+# These requests hit exact cache:
+"What is Python?"  # First call
+"What is Python?"  # Cache hit (identical)
+
+# These do NOT hit exact cache:
+"What is python?"  # Different case
+"What is Python"   # Missing punctuation
+```
+
+### Layer 2: Semantic Cache (Qdrant)
+
+- Embedding-based similarity search
+- Finds conceptually similar queries
+- Configurable similarity threshold (default: 0.95)
+
+```python
+# These may hit semantic cache:
+"What is Python?"           # First call
+"Explain Python"            # Semantic match (similar meaning)
+"Tell me about Python"      # Semantic match
+
+# These likely won't match:
+"What is Java?"             # Different topic
+```
+
+## Configuration
+
+### Environment Variables
+
+```bash
+# Redis (exact cache)
+export REDIS_URL="redis://localhost:6379"
+export CACHE_TTL_SECONDS=3600  # 1 hour default
+
+# Qdrant (semantic cache)
+export QDRANT_URL="http://localhost:6333"
+export SEMANTIC_CACHE_THRESHOLD=0.95  # Similarity threshold
+```
+
+### Cache Settings
+
+```python
+from isa_model.serving.api.llm_cache import LLMCache
+
+cache = LLMCache(
+    redis_url="redis://localhost:6379",
+    qdrant_url="http://localhost:6333",
+    ttl_seconds=3600,
+    semantic_threshold=0.95
+)
+```
+
+## Usage
+
+### Automatic Caching (API)
+
+Caching is automatic when using the `/invoke` endpoint:
+
+```bash
+# First request - calls LLM
+curl -X POST http://localhost:8082/api/v1/invoke \
+  -d '{"input_data": "What is Python?", "model": "gpt-4.1-nano", ...}'
+
+# Second identical request - cache hit
+curl -X POST http://localhost:8082/api/v1/invoke \
+  -d '{"input_data": "What is Python?", "model": "gpt-4.1-nano", ...}'
+```
+
+### Manual Cache Control
+
+```python
+from isa_model.serving.api.llm_cache import get_llm_cache
+
+cache = get_llm_cache()
+
+# Check cache
+cached = await cache.get(
+    messages=[{"role": "user", "content": "What is Python?"}],
+    model="gpt-4.1-nano",
+    provider="openai"
+)
+
+if cached:
+    print("Cache hit!")
+    print(cached["response"])
+else:
+    # Call LLM and cache result
+    response = await llm.ainvoke("What is Python?")
+    await cache.set(
+        messages=[{"role": "user", "content": "What is Python?"}],
+        model="gpt-4.1-nano",
+        provider="openai",
+        response=response
+    )
+```
+
+## Cache Statistics
+
+### Via API
+
+```bash
+# Get cache stats
+curl http://localhost:8082/api/v1/cache/stats
+```
+
+Response:
+```json
+{
+  "exact_cache": {
+    "hits": 1523,
+    "misses": 847,
+    "hit_rate": 0.64
+  },
+  "semantic_cache": {
+    "hits": 234,
+    "misses": 613,
+    "hit_rate": 0.28
+  },
+  "total_saved_tokens": 2847000,
+  "estimated_savings_usd": 42.50
+}
+```
+
+### Programmatic Access
+
+```python
+cache = get_llm_cache()
+stats = await cache.get_stats()
+
+print(f"Hit rate: {stats['hit_rate']:.1%}")
+print(f"Tokens saved: {stats['total_saved_tokens']:,}")
+```
+
+## Cache Invalidation
+
+### Invalidate Specific Model
+
+```bash
+curl -X DELETE http://localhost:8082/api/v1/cache/invalidate/openai/gpt-4.1-nano
+```
+
+### Clear All Cache
+
+```bash
+curl -X DELETE http://localhost:8082/api/v1/cache/clear
+```
+
+### Programmatic Invalidation
+
+```python
+cache = get_llm_cache()
+
+# Clear specific key
+await cache.invalidate(
+    messages=[{"role": "user", "content": "What is Python?"}],
+    model="gpt-4.1-nano"
+)
+
+# Clear by model
+await cache.clear_model("gpt-4.1-nano")
+
+# Clear all
+await cache.clear()
+```
+
+## Cache Key Generation
+
+Cache keys are generated from:
+
+1. **Messages hash** - Content of the conversation
+2. **Model name** - Different models = different cache
+3. **Provider** - Provider-specific responses
+4. **Key parameters** - temperature, max_tokens (if significant)
+
+```python
+# These have DIFFERENT cache keys:
+await model.invoke("Hello", model="gpt-4.1-nano", temperature=0.7)
+await model.invoke("Hello", model="gpt-4o", temperature=0.7)
+
+# These have the SAME cache key (temperature ignored for caching):
+await model.invoke("Hello", model="gpt-4.1-nano", temperature=0.7)
+await model.invoke("Hello", model="gpt-4.1-nano", temperature=0.5)
+```
+
+## Semantic Cache Details
+
+### Embedding Generation
+
+Queries are embedded using a fast embedding model:
+
+```python
+# Default embedding model
+CACHE_EMBEDDING_MODEL = "text-embedding-3-small"
+
+# Embedding dimensions
+CACHE_EMBEDDING_DIM = 1536
+```
+
+### Similarity Threshold
+
+Tune the threshold based on your needs:
+
+| Threshold | Behavior |
+|-----------|----------|
+| 0.99 | Very strict, near-identical queries only |
+| 0.95 | Default, good balance |
+| 0.90 | More permissive, may return less relevant |
+| 0.85 | Very permissive, higher cache hits |
+
+```python
+# Adjust threshold
+cache = LLMCache(semantic_threshold=0.90)  # More permissive
+```
+
+## Best Practices
+
+### 1. Warm the Cache
+
+Pre-populate cache with common queries:
+
+```python
+common_queries = [
+    "What is Python?",
+    "How do I create a function?",
+    "Explain object-oriented programming",
+]
+
+for query in common_queries:
+    response = await llm.ainvoke(query)
+    await cache.set(
+        messages=[{"role": "user", "content": query}],
+        model="gpt-4.1-nano",
+        response=response
+    )
+```
+
+### 2. Disable Caching for Dynamic Content
+
+```python
+# For queries that should always be fresh
+response = await model.invoke(
+    "What is the current stock price of AAPL?",
+    cache_enabled=False  # Skip cache
+)
+```
+
+### 3. Use Appropriate TTL
+
+```python
+# Short TTL for dynamic content
+cache_dynamic = LLMCache(ttl_seconds=300)  # 5 minutes
+
+# Long TTL for stable content
+cache_stable = LLMCache(ttl_seconds=86400)  # 24 hours
+```
+
+### 4. Monitor Cache Performance
+
+```python
+# Regular monitoring
+stats = await cache.get_stats()
+
+if stats['hit_rate'] < 0.5:
+    print("Low cache hit rate - consider:")
+    print("- Lowering semantic threshold")
+    print("- Warming cache with common queries")
+    print("- Checking TTL settings")
+```
+
+## Troubleshooting
+
+### Cache Not Working
+
+1. Check Redis connection:
+```bash
+redis-cli ping  # Should return PONG
+```
+
+2. Check Qdrant connection:
+```bash
+curl http://localhost:6333/healthz
+```
+
+3. Verify collection exists:
+```bash
+curl http://localhost:6333/collections/llm_cache_embeddings
+```
+
+### Low Hit Rate
+
+- Lower semantic threshold
+- Increase TTL
+- Warm cache with common queries
+- Check if queries vary significantly
+
+### High Memory Usage
+
+- Reduce TTL
+- Implement cache eviction policy
+- Limit collection size in Qdrant
+
+## Next Steps
+
+- [Providers](./providers) - Provider configuration
+- [LLM Services](./llm-services) - LLM usage

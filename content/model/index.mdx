@@ -1,0 +1,203 @@
+# isA Model Service
+
+Unified AI model inference service supporting LLM, vision, audio, embedding, image, and video models across multiple providers.
+
+## Installation
+
+```bash
+pip install isa-model
+```
+
+## Quick Start
+
+```python
+from isa_model import AsyncISAModel
+
+async with AsyncISAModel() as model:
+    response = await model.invoke(
+        input_data="Hello, world!",
+        model="gpt-4.1-nano",
+        provider="openai"
+    )
+    print(response)
+```
+
+## Core Concepts
+
+### Service Types
+
+The service supports multiple AI modalities:
+
+| Service Type | Description | Example Models |
+|--------------|-------------|----------------|
+| `text` | LLM chat/completion | gpt-4.1-nano, claude-3, llama-3.3 |
+| `vision` | Image analysis | gpt-4o-vision, qwen2-vl |
+| `audio` | TTS/STT | whisper, tts-1, openvoice |
+| `embedding` | Text embeddings | text-embedding-3-small |
+| `image` | Image generation | dall-e-3, flux |
+| `video` | Video generation | sora, hunyuan |
+
+### Provider Architecture
+
+```
+Backend (WHERE)     Provider (WHAT)      Task (HOW)
+─────────────────   ─────────────────    ─────────────────
+cloud               openai               chat
+ray_serve           anthropic            generate
+modal               yyds                 analyze
+local               cerebras             embed
+                    ollama               vision
+                    replicate            tts/stt
+```
+
+### Basic Usage
+
+```python
+from isa_model import AsyncISAModel
+
+client = AsyncISAModel()
+
+# Text generation
+response = await client.invoke(
+    input_data=[{"role": "user", "content": "Explain AI briefly"}],
+    model="gpt-4.1-nano",
+    provider="openai",
+    service_type="text",
+    task="chat"
+)
+
+# With streaming
+async for chunk in client.stream(
+    input_data="Write a poem",
+    model="gpt-4.1-nano",
+    stream=True
+):
+    print(chunk, end="")
+```
+
+[Learn more in Quick Start](./quickstart)
+
+### Tool Calling
+
+Enable function calling with any compatible model:
+
+```python
+tools = [{
+    "type": "function",
+    "function": {
+        "name": "get_weather",
+        "description": "Get weather for a location",
+        "parameters": {
+            "type": "object",
+            "properties": {"location": {"type": "string"}},
+            "required": ["location"]
+        }
+    }
+}]
+
+response = await client.invoke(
+    input_data=[{"role": "user", "content": "What's the weather in Tokyo?"}],
+    model="gpt-4.1-nano",
+    tools=tools
+)
+
+# Response includes tool_calls if model wants to use a tool
+if response.get("tool_calls"):
+    for call in response["tool_calls"]:
+        print(f"Tool: {call['function']['name']}")
+        print(f"Args: {call['function']['arguments']}")
+```
+
+[Tool calling guide](./tool-calling)
+
+### Direct Service Access
+
+For advanced use cases, access services directly:
+
+```python
+from isa_model.inference.ai_factory import AIFactory
+
+factory = AIFactory()
+
+# Get LLM service
+llm = factory.get_service(
+    service_type="text",
+    provider="openai",
+    model="gpt-4.1-nano"
+)
+
+# Use service methods
+response = await llm.ainvoke("Hello!")
+print(response)
+
+# Streaming
+async for token in llm.astream("Write a story"):
+    print(token, end="")
+```
+
+[LLM services guide](./llm-services)
+
+### Caching
+
+Two-layer caching for cost optimization:
+
+```python
+# Caching is automatic for identical requests
+# Layer 1: Exact match (Redis)
+# Layer 2: Semantic similarity (Qdrant)
+
+response1 = await client.invoke(input_data="What is Python?", ...)
+response2 = await client.invoke(input_data="What is Python?", ...)  # Cache hit
+
+# Semantic cache also matches similar queries
+response3 = await client.invoke(input_data="Explain Python", ...)  # Semantic match
+```
+
+[Caching guide](./caching)
+
+## Documentation
+
+### Getting Started
+- [Quick Start](./quickstart) - First steps with the service
+- [Providers](./providers) - Configure model providers
+
+### Features
+- [LLM Services](./llm-services) - Text generation and chat
+- [Tool Calling](./tool-calling) - Function calling guide
+- [Caching](./caching) - Cache configuration
+
+## API Endpoints
+
+Base URL: `http://localhost:8082/api/v1`
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/invoke` | POST | Unified inference endpoint |
+| `/models` | GET | List available models |
+| `/health` | GET | Service health check |
+| `/cache/stats` | GET | Cache statistics |
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8082/api/v1/invoke \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input_data": [{"role": "user", "content": "Hello!"}],
+    "model": "gpt-4.1-nano",
+    "provider": "openai",
+    "service_type": "text",
+    "task": "chat"
+  }'
+```
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OPENAI_API_KEY` | OpenAI API key | - |
+| `ANTHROPIC_API_KEY` | Anthropic API key | - |
+| `YYDS_API_KEY` | YYDS proxy API key | - |
+| `REDIS_URL` | Redis connection URL | localhost:6379 |
+| `QDRANT_URL` | Qdrant connection URL | localhost:6333 |
+| `NATS_URL` | NATS connection URL | localhost:4222 |

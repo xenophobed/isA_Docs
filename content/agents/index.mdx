@@ -1,0 +1,38 @@
+# Pre-built Agents
+
+Ready-to-use AI agents built on the isA Agent SDK.
+
+## Available Agents
+
+| Agent | Description | Use Case |
+|-------|-------------|----------|
+| [**isA Vibe**](./vibe) | Coding assistant | Development, debugging, code review |
+| [**isA Creative**](./creative) | Content creation | Writing, marketing, social media |
+| [**isA Agent**](./default) | General purpose | Research, automation, assistance |
+
+## Architecture
+
+All agents are built using the same SDK and share:
+
+- **Tool Access** - 50+ tools via MCP
+- **Streaming** - Real-time responses
+- **Human-in-the-Loop** - Approval workflows
+- **Checkpointing** - Durable execution
+
+## Build Your Own
+
+Use any agent as a starting point:
+
+```python
+from isa_agent_sdk import query, ISAAgentOptions
+
+options = ISAAgentOptions(
+    skills=["your-custom-skill"],
+    allowed_tools=["web_search", "read_file"]
+)
+
+async for msg in query("Your prompt", options=options):
+    print(msg.content, end="")
+```
+
+See the [Agent SDK documentation](/agent-sdk) for details.

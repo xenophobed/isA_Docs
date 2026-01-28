@@ -1,0 +1,210 @@
+# Pool Manager
+
+Unified resource gateway for all computing resources.
+
+## Overview
+
+Pool Manager provides a single API to acquire, use, and release resources across different backends:
+
+| Pool Type | Backend | Description |
+|-----------|---------|-------------|
+| `vm` | Cloud OS | Firecracker VMs |
+| `repl` | Python REPL | Code execution |
+| `browser` | Web Services | Browser instances |
+| `desktop` | Desktop Agent | User desktops |
+| `device` | Real OS | Physical devices |
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      POOL MANAGER                                │
+│                                                                  │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │   Router    │  │  Allocator  │  │  Registry   │            │
+│  │             │  │             │  │             │            │
+│  │ Route to    │  │ Manage      │  │ Track       │            │
+│  │ backend     │  │ resources   │  │ resources   │            │
+│  └─────────────┘  └─────────────┘  └─────────────┘            │
+└─────────────────────────────────────────────────────────────────┘
+         │                   │                   │
+         ▼                   ▼                   ▼
+┌─────────────┐      ┌─────────────┐      ┌─────────────┐
+│  cloud_os   │      │ python_repl │      │  desktop_os │
+└─────────────┘      └─────────────┘      └─────────────┘
+```
+
+## API Endpoints
+
+### Acquire Resource
+
+```bash
+POST /pools/{type}/acquire
+```
+
+Request:
+```json
+{
+  "user_id": "user123",
+  "config": {
+    "cpu_count": 2,
+    "memory_mb": 2048
+  }
+}
+```
+
+Response:
+```json
+{
+  "resource_id": "vm-abc123",
+  "pool_type": "vm",
+  "status": "ready",
+  "connection_info": {
+    "host": "localhost",
+    "port": 8001
+  }
+}
+```
+
+### Execute Action
+
+```bash
+POST /pools/{type}/{id}/execute
+```
+
+Request:
+```json
+{
+  "action": "run_command",
+  "params": {
+    "command": ["python3", "--version"]
+  }
+}
+```
+
+### Release Resource
+
+```bash
+DELETE /pools/{type}/{id}/release
+```
+
+### List Resources
+
+```bash
+GET /pools/{type}?user_id=user123
+```
+
+### Health Check
+
+```bash
+GET /health
+```
+
+## Pool Types
+
+### VM Pool
+
+```python
+# Acquire VM
+response = await client.post("/pools/vm/acquire", json={
+    "user_id": "user123",
+    "config": {
+        "image": "ubuntu:22.04",
+        "cpu_count": 2,
+        "memory_mb": 2048
+    }
+})
+
+# Execute command
+await client.post(f"/pools/vm/{vm_id}/execute", json={
+    "action": "run_command",
+    "params": {"command": ["ls", "-la"]}
+})
+```
+
+### REPL Pool
+
+```python
+# Acquire REPL session
+response = await client.post("/pools/repl/acquire", json={
+    "user_id": "user123"
+})
+
+# Execute code
+await client.post(f"/pools/repl/{session_id}/execute", json={
+    "action": "execute",
+    "params": {"code": "print('hello')"}
+})
+```
+
+### Browser Pool
+
+```python
+# Acquire browser
+response = await client.post("/pools/browser/acquire", json={
+    "user_id": "user123",
+    "config": {"headless": True}
+})
+
+# Navigate
+await client.post(f"/pools/browser/{browser_id}/execute", json={
+    "action": "navigate",
+    "params": {"url": "https://example.com"}
+})
+```
+
+### Desktop Pool
+
+```python
+# List available desktops
+response = await client.get("/pools/desktop", params={
+    "visibility": "shared"
+})
+
+# Execute on desktop
+await client.post(f"/pools/desktop/{desktop_id}/execute", json={
+    "action": "execute_bash",
+    "params": {"command": "ls -la"}
+})
+```
+
+## Resource Lifecycle
+
+```
+┌─────────┐    acquire     ┌─────────┐
+│ pending │ ─────────────▶ │  ready  │
+└─────────┘                └─────────┘
+                               │
+                    execute    │    release
+                    ◄──────────┼──────────▶ ┌──────────┐
+                               │            │ released │
+                               │            └──────────┘
+                               ▼
+                          ┌─────────┐
+                          │  error  │
+                          └─────────┘
+```
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `POOL_MANAGER_PORT` | `8090` | Server port |
+| `CLOUD_OS_URL` | `http://localhost:8001` | Cloud OS endpoint |
+| `PYTHON_REPL_URL` | `http://localhost:8001` | Python REPL endpoint |
+| `WEB_SERVICES_URL` | `http://localhost:8000` | Web services endpoint |
+
+## Best Practices
+
+1. **Always release resources** - Avoid resource leaks
+2. **Use timeouts** - Set appropriate timeouts for operations
+3. **Handle errors** - Check response status codes
+4. **Monitor health** - Use health endpoints for monitoring
+
+## Next Steps
+
+- [Cloud OS](./cloud-os) - VM management details
+- [Python REPL](./python-repl) - Code execution
+- [Desktop Agent](./desktop-agent) - Desktop control

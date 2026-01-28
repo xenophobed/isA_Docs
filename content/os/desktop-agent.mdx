@@ -1,0 +1,268 @@
+# Desktop Agent
+
+Allow AI agents to interact with personal desktops.
+
+## Overview
+
+The Desktop Agent runs on user machines and enables AI agents to remotely control desktops through the isA platform.
+
+## Features
+
+- **Remote Desktop Control** - AI agents execute commands on your desktop
+- **Ownership & Visibility** - Control who can access (private, shared, friends, org)
+- **10 Built-in Tools** - File ops, bash, clipboard, screenshots, and more
+- **WebSocket Connection** - Real-time bidirectional communication
+- **Heartbeat Monitoring** - Automatic health checks and reconnection
+
+## Installation
+
+### Via pip
+
+```bash
+cd os_services/desktop_os
+pip install -e .
+```
+
+### Via Install Script
+
+```bash
+curl -fsSL https://your-domain.com/install.sh | bash
+```
+
+## Usage
+
+### Basic
+
+```bash
+# Run with your user ID (required)
+isa-desktop --owner YOUR_USER_ID --server http://pool-manager:8090
+```
+
+### With Options
+
+```bash
+# Share desktop with others
+isa-desktop --owner YOUR_USER_ID --visibility shared
+
+# Run in sandbox mode (restrict to home directory)
+isa-desktop --owner YOUR_USER_ID --sandbox
+
+# Custom name and tier
+isa-desktop --owner YOUR_USER_ID --name "My Workstation" --tier workstation
+```
+
+## Command Line Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--owner` | Your user ID (required) | - |
+| `--server` | Pool Manager URL | `http://localhost:8090` |
+| `--visibility` | Access control | `private` |
+| `--sandbox` | Restrict file operations | `false` |
+| `--name` | Custom desktop name | hostname |
+| `--tier` | Desktop tier | `standard` |
+
+### Visibility Levels
+
+| Level | Description |
+|-------|-------------|
+| `private` | Only owner can access |
+| `shared` | Anyone with link can access |
+| `friends` | Owner's friends can access |
+| `organization` | Organization members can access |
+
+### Tier Levels
+
+| Tier | Description |
+|------|-------------|
+| `basic` | Limited capabilities |
+| `standard` | Normal capabilities |
+| `premium` | Enhanced capabilities |
+| `workstation` | Full workstation features |
+
+## Available Tools
+
+### 1. read_file
+Read file contents from desktop.
+
+```python
+{
+  "tool": "read_file",
+  "params": {"path": "/home/user/document.txt"}
+}
+```
+
+### 2. write_file
+Write content to files.
+
+```python
+{
+  "tool": "write_file",
+  "params": {
+    "path": "/home/user/output.txt",
+    "content": "Hello, World!"
+  }
+}
+```
+
+### 3. list_directory
+List directory contents.
+
+```python
+{
+  "tool": "list_directory",
+  "params": {"path": "/home/user"}
+}
+```
+
+### 4. execute_bash
+Run shell commands.
+
+```python
+{
+  "tool": "execute_bash",
+  "params": {"command": "ls -la"}
+}
+```
+
+### 5. get_clipboard
+Get clipboard contents.
+
+```python
+{
+  "tool": "get_clipboard",
+  "params": {}
+}
+```
+
+### 6. set_clipboard
+Set clipboard contents.
+
+```python
+{
+  "tool": "set_clipboard",
+  "params": {"content": "Text to copy"}
+}
+```
+
+### 7. screenshot
+Capture screen.
+
+```python
+{
+  "tool": "screenshot",
+  "params": {"region": "full"}  # or specific coordinates
+}
+```
+
+### 8. open_application
+Launch applications.
+
+```python
+{
+  "tool": "open_application",
+  "params": {"app": "code"}  # VS Code
+}
+```
+
+### 9. open_url
+Open URLs in browser.
+
+```python
+{
+  "tool": "open_url",
+  "params": {"url": "https://example.com"}
+}
+```
+
+### 10. get_system_info
+Get system information.
+
+```python
+{
+  "tool": "get_system_info",
+  "params": {}
+}
+```
+
+## Architecture
+
+```
+User/Agent → APISIX → Thin Agent Proxy → Pool Manager → Desktop Agent
+```
+
+The Desktop Agent:
+1. Registers with Pool Manager on startup
+2. Connects via WebSocket for real-time commands
+3. Sends periodic heartbeats
+4. Executes commands and returns results
+
+## Security Considerations
+
+### Sandbox Mode
+When `--sandbox` is enabled:
+- File operations restricted to home directory
+- No access to system files
+- Prevents accidental system damage
+
+### Visibility Control
+- Choose appropriate visibility level
+- `private` recommended for sensitive work
+- `shared` only for controlled environments
+
+## Integration
+
+### From AI Agent
+
+```python
+import httpx
+
+async def execute_on_desktop(desktop_id: str, tool: str, params: dict):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"http://pool-manager:8090/pools/desktop/{desktop_id}/execute",
+            json={
+                "action": tool,
+                "params": params
+            }
+        )
+        return response.json()
+
+# Example: Read a file
+result = await execute_on_desktop(
+    "desktop-abc123",
+    "read_file",
+    {"path": "/home/user/notes.txt"}
+)
+```
+
+### From MCP Tool
+
+```python
+@mcp.tool()
+async def desktop_bash(desktop_id: str, command: str):
+    """Execute bash command on desktop"""
+    return await execute_on_desktop(
+        desktop_id,
+        "execute_bash",
+        {"command": command}
+    )
+```
+
+## Troubleshooting
+
+### Connection Issues
+- Check Pool Manager is running
+- Verify network connectivity
+- Check firewall settings
+
+### Permission Denied
+- Ensure correct ownership
+- Check visibility settings
+- Verify sandbox mode restrictions
+
+## Next Steps
+
+- [Pool Manager](./pool-manager) - Resource gateway
+- [Cloud OS](./cloud-os) - VM-based alternative
+- [Quick Start](./quickstart) - Getting started

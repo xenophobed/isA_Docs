@@ -1,0 +1,104 @@
+# Progress Tracking
+
+Real-time progress monitoring for long-running operations.
+
+## Overview
+
+Two methods for tracking progress:
+
+| Method | Transport | Use Case |
+|--------|-----------|----------|
+| SSE Streaming | Server-Sent Events | Real-time updates |
+| HTTP Polling | REST API | Fallback |
+
+## SSE Streaming (Recommended)
+
+```python
+import httpx
+import json
+
+async def stream_progress(base_url: str, operation_id: str, callback=None):
+    stream_url = f"{base_url}/progress/{operation_id}/stream"
+
+    async with httpx.AsyncClient(timeout=300.0) as http_client:
+        async with http_client.stream('GET', stream_url) as response:
+            async for line in response.aiter_lines():
+                if line.startswith('event:'):
+                    event_type = line.split(':', 1)[1].strip()
+                elif line.startswith('data:'):
+                    data = json.loads(line.split(':', 1)[1].strip())
+
+                    if event_type == 'progress' and callback:
+                        callback(data)
+                    elif event_type == 'done':
+                        return data
+```
+
+### Usage
+
+```python
+async def main():
+    # Start task
+    response = await client.call_tool("start_long_task", {
+        "task_type": "data_analysis",
+        "duration_seconds": 10,
+        "steps": 5
+    })
+    operation_id = response['data']['operation_id']
+
+    # Stream progress
+    def on_progress(data):
+        print(f"Progress: {data['progress']:.0f}% - {data['message']}")
+
+    await stream_progress("http://localhost:8081", operation_id, on_progress)
+
+# Output:
+# Progress: 20% - Processing step 1/5
+# Progress: 40% - Processing step 2/5
+# Progress: 60% - Processing step 3/5
+# ...
+```
+
+## HTTP Polling (Fallback)
+
+```python
+async def poll_progress(client, operation_id, interval=1.0):
+    while True:
+        progress = await client.call_tool("get_task_progress", {
+            "operation_id": operation_id
+        })
+
+        data = progress['data']
+        print(f"{data['progress']:.0f}% - {data['message']}")
+
+        if data['status'] == 'completed':
+            return data
+
+        await asyncio.sleep(interval)
+```
+
+## Progress Data
+
+```json
+{
+  "operation_id": "uuid",
+  "status": "running|completed|failed",
+  "progress": 75.0,
+  "message": "Processing step 3/4",
+  "elapsed_seconds": 30.5,
+  "estimated_remaining": 10.2
+}
+```
+
+## Progress Tools
+
+| Tool | Description |
+|------|-------------|
+| `start_long_task` | Start operation |
+| `get_task_progress` | Get current progress |
+| `get_task_result` | Get final result |
+
+## Next Steps
+
+- [Human-in-the-Loop](./hil) - Interaction patterns
+- [Server Aggregation](./aggregator) - External servers

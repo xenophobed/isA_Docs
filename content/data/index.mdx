@@ -1,0 +1,45 @@
+# Data Service
+
+Storage and data pipelines for AI agents.
+
+## Overview
+
+The Data Service provides persistent storage and data processing capabilities for AI agents.
+
+## Features
+
+### Storage
+- **Object Storage** - Store files, images, documents
+- **Vector Database** - Embeddings for RAG applications
+- **Key-Value Store** - Fast caching and state storage
+- **Session Storage** - Persistent conversation history
+
+### Data Pipelines
+- ETL workflows
+- Real-time data streaming
+- Scheduled data sync
+
+### Integrations
+- Connect to external databases
+- Import from cloud storage (S3, GCS)
+- Export to data warehouses
+
+## Quick Start
+
+```python
+from isa_agent_sdk import ISAAgentOptions
+
+options = ISAAgentOptions(
+    # Enable persistent storage for the session
+    session_id="my-session",
+    storage_enabled=True
+)
+```
+
+## Coming Soon
+
+Full documentation including:
+- Vector database setup
+- RAG implementation guide
+- Data pipeline configuration
+- Backup and recovery

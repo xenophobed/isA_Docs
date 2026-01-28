@@ -1,0 +1,289 @@
+# LLM Services
+
+Deep dive into using Large Language Model services.
+
+## Overview
+
+The LLM service provides unified access to text generation models across multiple providers with consistent APIs.
+
+## Service Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                      AIFactory                          │
+├─────────────────────────────────────────────────────────┤
+│  get_service(service_type="text", provider, model)      │
+└─────────────────────────────────────────────────────────┘
+                           │
+         ┌─────────────────┼─────────────────┐
+         ▼                 ▼                 ▼
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│ OpenAILLMService│ │ YYDSLLMService  │ │CerebrasLLMService│
+└─────────────────┘ └─────────────────┘ └─────────────────┘
+```
+
+## Getting a Service
+
+```python
+from isa_model.inference.ai_factory import AIFactory
+
+factory = AIFactory()
+
+# Get OpenAI service
+llm = factory.get_service(
+    service_type="text",
+    provider="openai",
+    model="gpt-4.1-nano"
+)
+
+# Get Cerebras service (fast inference)
+llm_fast = factory.get_service(
+    service_type="text",
+    provider="cerebras",
+    model="llama-3.3-70b"
+)
+```
+
+## Core Methods
+
+### ainvoke - Single Response
+
+```python
+# Simple string input
+response = await llm.ainvoke("What is Python?")
+print(response)  # String or AIMessage object
+
+# Message list input
+messages = [
+    {"role": "system", "content": "You are a helpful assistant."},
+    {"role": "user", "content": "Hello!"}
+]
+response = await llm.ainvoke(messages)
+print(response.content)  # Access content from AIMessage
+```
+
+### astream - Streaming Response
+
+```python
+async for token in llm.astream("Write a poem about coding"):
+    print(token, end="", flush=True)
+print()  # Newline at end
+```
+
+### invoke - Task-Based Dispatch
+
+```python
+# Chat task (default)
+result = await llm.invoke("Hello", task="chat")
+
+# Summarization
+result = await llm.invoke(long_text, task="summarize")
+
+# Code generation
+result = await llm.invoke(
+    "Write a function to sort a list",
+    task="code",
+    language="python"
+)
+
+# With JSON output
+result = await llm.invoke(
+    "List 3 programming languages",
+    task="chat",
+    output_format="json",
+    json_schema={
+        "type": "array",
+        "items": {"type": "string"}
+    }
+)
+```
+
+## Reasoning Models
+
+O-series models (o4-mini, o3, etc.) support extended reasoning:
+
+```python
+# Get reasoning model
+llm = factory.get_service(
+    service_type="text",
+    provider="openai",
+    model="o4-mini"
+)
+
+# Enable reasoning display
+response = await llm.ainvoke(
+    "Solve this logic puzzle: ...",
+    show_reasoning=True
+)
+
+# Access reasoning tokens
+usage = llm.get_last_token_usage()
+print(f"Reasoning tokens: {usage.get('reasoning_tokens', 0)}")
+```
+
+### Reasoning Model Differences
+
+| Feature | Standard Models | Reasoning Models |
+|---------|-----------------|------------------|
+| Temperature | Configurable | Fixed at 1.0 |
+| Max tokens param | `max_tokens` | `max_completion_tokens` |
+| Reasoning output | No | Yes (with show_reasoning) |
+| Deep research | No | Yes (o4-deep-research) |
+
+## Token Usage
+
+```python
+# Get last request usage
+usage = llm.get_last_token_usage()
+print(f"Prompt tokens: {usage['prompt_tokens']}")
+print(f"Completion tokens: {usage['completion_tokens']}")
+print(f"Total tokens: {usage['total_tokens']}")
+
+# Get cumulative usage
+total = llm.get_token_usage()
+print(f"Total requests: {total['requests_count']}")
+print(f"Total tokens: {total['total_tokens']}")
+
+# Get usage with cost
+usage_with_cost = llm.get_last_usage_with_cost()
+print(f"Cost: ${usage_with_cost['cost_usd']:.4f}")
+```
+
+## Model Information
+
+```python
+info = llm.get_model_info()
+print(f"Model: {info['name']}")
+print(f"Provider: {info['provider']}")
+print(f"Supports streaming: {info['supports_streaming']}")
+print(f"Supports functions: {info['supports_functions']}")
+print(f"Is reasoning model: {info['supports_reasoning']}")
+```
+
+## Provider Information
+
+```python
+provider_info = llm.get_provider_info()
+print(f"Supported tasks: {provider_info['supported_tasks']}")
+print(f"Max context: {provider_info['max_context_length']}")
+```
+
+## Structured Output
+
+### JSON Mode
+
+```python
+response = await llm.ainvoke(
+    messages,
+    response_format={"type": "json_object"}
+)
+```
+
+### With Schema Validation
+
+```python
+result = await llm.invoke(
+    "List the top 3 programming languages",
+    task="chat",
+    output_format="json",
+    json_schema={
+        "type": "object",
+        "properties": {
+            "languages": {
+                "type": "array",
+                "items": {"type": "string"}
+            }
+        },
+        "required": ["languages"]
+    }
+)
+
+if result.get("formatted"):
+    print(result["result"])  # Parsed JSON
+else:
+    print(f"Formatting failed: {result.get('format_errors')}")
+```
+
+## Configuration
+
+### Via Provider Config
+
+Provider settings are loaded from YAML config:
+
+```yaml
+# isa_model/core/config/providers/openai.yaml
+openai:
+  enabled: true
+  api_key: ${OPENAI_API_KEY}
+  api_base_url: https://api.openai.com/v1
+  default_model: gpt-4.1-nano
+  temperature: 0.7
+  max_tokens: 4096
+```
+
+### Runtime Override
+
+```python
+# Override via factory
+llm = factory.get_service(
+    service_type="text",
+    provider="openai",
+    model="gpt-4.1-nano",
+    temperature=0.5,
+    max_tokens=2000
+)
+```
+
+## Billing Integration
+
+Usage events are automatically published to NATS for billing:
+
+```python
+# Set user_id for billing tracking
+response = await llm.ainvoke(
+    messages,
+    user_id="user-123"  # Required for billing
+)
+
+# Events are published to: billing.usage.recorded.{model_name}
+# Billing service processes these asynchronously
+```
+
+## Error Handling
+
+```python
+from openai import RateLimitError, APIError
+
+try:
+    response = await llm.ainvoke("Hello")
+except RateLimitError:
+    # Switch to backup provider
+    llm_backup = factory.get_service(
+        service_type="text",
+        provider="yyds",  # Fallback
+        model="gpt-4o-mini"
+    )
+    response = await llm_backup.ainvoke("Hello")
+except APIError as e:
+    print(f"API error: {e}")
+except Exception as e:
+    print(f"Unexpected error: {e}")
+```
+
+## Cleanup
+
+```python
+# Cleanup when done
+await llm.close()
+
+# Or use context manager pattern
+async with factory.get_service(...) as llm:
+    response = await llm.ainvoke("Hello")
+# Automatically cleaned up
+```
+
+## Next Steps
+
+- [Tool Calling](./tool-calling) - Function calling
+- [Providers](./providers) - Provider configuration
+- [Caching](./caching) - Response caching

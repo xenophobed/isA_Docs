@@ -1,0 +1,107 @@
+# Search & Discovery
+
+Intelligent tool discovery with semantic and hierarchical search.
+
+## Overview
+
+ISA MCP provides two search strategies:
+
+1. **Semantic Search** - Vector similarity matching
+2. **Hierarchical Search** - Two-stage skill → tool routing
+
+## Semantic Search
+
+Find tools using natural language queries.
+
+```python
+import aiohttp
+
+async def search_tools(query: str, limit: int = 5):
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            "http://localhost:8081/search",
+            json={
+                "query": query,
+                "type": "tool",
+                "limit": limit,
+                "score_threshold": 0.3
+            }
+        ) as response:
+            return await response.json()
+
+results = await search_tools("weather information")
+# Found 3 tools: get_weather, stream_weather, batch_weather
+```
+
+### Search Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `query` | string | required | Search query |
+| `type` | string | all | `tool`, `prompt`, `resource` |
+| `limit` | int | 10 | Maximum results |
+| `score_threshold` | float | 0.3 | Minimum similarity |
+
+## Hierarchical Search
+
+Two-stage skill-based routing for better relevance.
+
+```
+User Query: "schedule a meeting"
+           │
+           ▼
+┌────────────────────────────────────────┐
+│  Stage 1: Skill Matching               │
+│  Result: calendar_management (0.92)    │
+└────────────────────────────────────────┘
+           │
+           ▼
+┌────────────────────────────────────────┐
+│  Stage 2: Tool Search (Filtered)       │
+│  Result: create_event (0.95)           │
+└────────────────────────────────────────┘
+```
+
+### Skill Categories
+
+```
+Skills (6 Categories)
+├── Productivity (calendar, task, note, time)
+├── Communication (email, messaging)
+├── Data (query, analysis, visualization)
+├── File (operations, documents, media)
+├── Integration (API, webhooks)
+└── System (config, monitoring, security)
+```
+
+## Fallback Behavior
+
+When no skills match, the system falls back to direct search across all tools.
+
+## Search Metadata
+
+```json
+{
+  "query": "schedule meeting",
+  "tools": [...],
+  "metadata": {
+    "strategy": "hierarchical",
+    "skills_matched": ["calendar_management"],
+    "fallback_used": false,
+    "search_time_ms": 45.2
+  }
+}
+```
+
+## Performance
+
+| Operation | Target Latency |
+|-----------|----------------|
+| Semantic search | < 100ms |
+| Hierarchical search | < 150ms |
+| Schema loading | < 50ms |
+
+## Next Steps
+
+- [Human-in-the-Loop](./hil) - Interaction patterns
+- [Server Aggregation](./aggregator) - External tools

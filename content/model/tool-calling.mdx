@@ -1,0 +1,331 @@
+# Tool Calling
+
+Enable LLMs to call functions and tools for extended capabilities.
+
+## Overview
+
+Tool calling allows models to request execution of external functions. The model receives the function definitions, decides when to use them, and returns structured arguments for your code to execute.
+
+## Basic Tool Calling
+
+### Define Tools
+
+```python
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get the current weather for a location",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "City name, e.g., 'Tokyo' or 'New York'"
+                    },
+                    "unit": {
+                        "type": "string",
+                        "enum": ["celsius", "fahrenheit"],
+                        "description": "Temperature unit"
+                    }
+                },
+                "required": ["location"]
+            }
+        }
+    }
+]
+```
+
+### Make a Request
+
+```python
+from isa_model import AsyncISAModel
+
+async with AsyncISAModel() as model:
+    response = await model.invoke(
+        input_data=[{"role": "user", "content": "What's the weather in Tokyo?"}],
+        model="gpt-4.1-nano",
+        provider="openai",
+        service_type="text",
+        task="chat",
+        tools=tools
+    )
+
+    # Check if model wants to call a tool
+    result = response.get("result", {})
+    choices = result.get("choices", [])
+
+    if choices and choices[0].get("message", {}).get("tool_calls"):
+        for tool_call in choices[0]["message"]["tool_calls"]:
+            print(f"Tool: {tool_call['function']['name']}")
+            print(f"Args: {tool_call['function']['arguments']}")
+```
+
+### REST API
+
+```bash
+curl -X POST http://localhost:8082/api/v1/invoke \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input_data": [{"role": "user", "content": "What is the weather in Tokyo?"}],
+    "model": "gpt-4.1-nano",
+    "provider": "openai",
+    "service_type": "text",
+    "task": "chat",
+    "tools": [{
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get weather for a location",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {"type": "string"}
+                },
+                "required": ["location"]
+            }
+        }
+    }]
+  }'
+```
+
+## Complete Tool Loop
+
+Handle tool calls and provide results back to the model:
+
+```python
+import json
+from isa_model import AsyncISAModel
+
+# Define your tool implementations
+def get_weather(location: str, unit: str = "celsius") -> dict:
+    # Your actual implementation
+    return {"temperature": 22, "condition": "sunny", "unit": unit}
+
+def search_web(query: str) -> str:
+    # Your actual implementation
+    return f"Search results for: {query}"
+
+# Map tool names to functions
+tool_functions = {
+    "get_weather": get_weather,
+    "search_web": search_web,
+}
+
+async def run_with_tools(user_message: str, tools: list):
+    messages = [{"role": "user", "content": user_message}]
+
+    async with AsyncISAModel() as model:
+        while True:
+            response = await model.invoke(
+                input_data=messages,
+                model="gpt-4.1-nano",
+                provider="openai",
+                service_type="text",
+                task="chat",
+                tools=tools
+            )
+
+            result = response.get("result", {})
+            choices = result.get("choices", [])
+
+            if not choices:
+                break
+
+            message = choices[0].get("message", {})
+
+            # Check for tool calls
+            tool_calls = message.get("tool_calls")
+            if not tool_calls:
+                # No tool calls - return final response
+                return message.get("content", "")
+
+            # Add assistant message with tool calls
+            messages.append({
+                "role": "assistant",
+                "content": message.get("content"),
+                "tool_calls": tool_calls
+            })
+
+            # Execute each tool and add results
+            for tool_call in tool_calls:
+                func_name = tool_call["function"]["name"]
+                func_args = json.loads(tool_call["function"]["arguments"])
+
+                # Execute the tool
+                if func_name in tool_functions:
+                    result = tool_functions[func_name](**func_args)
+                else:
+                    result = f"Unknown tool: {func_name}"
+
+                # Add tool result to messages
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call["id"],
+                    "content": json.dumps(result) if isinstance(result, dict) else str(result)
+                })
+
+        return "No response"
+
+# Usage
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get weather for a location",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {"type": "string"},
+                    "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]}
+                },
+                "required": ["location"]
+            }
+        }
+    }
+]
+
+result = await run_with_tools("What's the weather in Tokyo?", tools)
+print(result)  # "The weather in Tokyo is 22°C and sunny."
+```
+
+## Using Direct Service with bind_tools
+
+For advanced usage, bind tools directly to a service:
+
+```python
+from isa_model.inference.ai_factory import AIFactory
+
+factory = AIFactory()
+llm = factory.get_service(
+    service_type="text",
+    provider="openai",
+    model="gpt-4.1-nano"
+)
+
+# Bind tools to service
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "calculate",
+            "description": "Perform a calculation",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "expression": {"type": "string"}
+                },
+                "required": ["expression"]
+            }
+        }
+    }
+]
+
+bound_llm = llm.bind_tools(tools)
+
+# Now invoke - tools are automatically included
+response = await bound_llm.ainvoke([
+    {"role": "user", "content": "What is 15 * 23?"}
+])
+```
+
+## Streaming with Tools
+
+Tool calls are also supported in streaming mode:
+
+```python
+async with AsyncISAModel() as model:
+    async for chunk in model.stream(
+        input_data=[{"role": "user", "content": "What's the weather?"}],
+        model="gpt-4.1-nano",
+        provider="openai",
+        tools=tools,
+        stream=True
+    ):
+        # Tool calls arrive as complete structures at stream end
+        if hasattr(chunk, 'tool_calls') and chunk.tool_calls:
+            for tc in chunk.tool_calls:
+                print(f"Tool call: {tc}")
+        else:
+            print(chunk, end="")
+```
+
+## Tool Schema Best Practices
+
+### Good Schema
+
+```python
+{
+    "type": "function",
+    "function": {
+        "name": "search_products",
+        "description": "Search for products in the catalog by name, category, or price range",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Search query (product name or keywords)"
+                },
+                "category": {
+                    "type": "string",
+                    "enum": ["electronics", "clothing", "home", "sports"],
+                    "description": "Product category to filter by"
+                },
+                "max_price": {
+                    "type": "number",
+                    "description": "Maximum price in USD"
+                },
+                "in_stock": {
+                    "type": "boolean",
+                    "description": "Only show in-stock items"
+                }
+            },
+            "required": ["query"]
+        }
+    }
+}
+```
+
+### Tips
+
+1. **Clear descriptions**: Help the model understand when to use each tool
+2. **Typed parameters**: Use `string`, `number`, `boolean`, `array`, `object`
+3. **Enums for options**: Constrain values when possible
+4. **Required fields**: Mark essential parameters as required
+5. **Default values**: Document defaults in descriptions
+
+## Supported Models
+
+Tool calling is supported on:
+
+| Provider | Models |
+|----------|--------|
+| OpenAI | gpt-4.1-nano, gpt-4o, gpt-4o-mini, o4-mini |
+| Anthropic | claude-3-opus, claude-3-sonnet, claude-3-haiku |
+| YYDS | All GPT models (proxy) |
+| DeepSeek | deepseek-chat (with caveats) |
+
+## Error Handling
+
+```python
+try:
+    response = await model.invoke(
+        input_data=messages,
+        model="gpt-4.1-nano",
+        tools=tools
+    )
+except ValueError as e:
+    # Invalid tool schema
+    print(f"Schema error: {e}")
+except Exception as e:
+    # API or network error
+    print(f"Request failed: {e}")
+```
+
+## Next Steps
+
+- [LLM Services](./llm-services) - Advanced LLM configuration
+- [Providers](./providers) - Provider-specific features

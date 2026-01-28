@@ -1,0 +1,277 @@
+# Python REPL
+
+Isolated Python code execution sandbox with multiple provider backends.
+
+## Overview
+
+Python REPL provides secure code execution with session state persistence.
+
+## Provider Comparison
+
+| Provider | Security | Startup | Use Case | Dependency |
+|----------|----------|---------|----------|------------|
+| **E2B** | ⭐⭐⭐⭐⭐ | < 200ms | Production | E2B API Key |
+| **Local** | ⭐⭐ | < 50ms | Development | RestrictedPython |
+| **Docker** | ⭐⭐⭐⭐ | ~2s | Self-hosted | Docker (planned) |
+
+## Architecture
+
+```
+┌─────────────────────────────────────┐
+│         FastAPI Service             │
+│           (main.py)                 │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│    ExecutionProvider Interface      │
+│           (base.py)                 │
+└──────────────┬──────────────────────┘
+               │
+       ┌───────┴───────┬──────────┐
+       ▼               ▼          ▼
+┌─────────────┐ ┌────────────┐ ┌─────────────┐
+│ E2BProvider │ │LocalProvider│ │DockerProvider│
+│   (e2b.dev) │ │(Restricted) │ │   (TODO)    │
+└─────────────┘ └────────────┘ └─────────────┘
+```
+
+## Configuration
+
+### Local Provider (Default)
+
+```bash
+PYTHON_REPL_PROVIDER=local
+ENABLE_RESTRICTED_PYTHON=true
+```
+
+### E2B Provider (Production)
+
+```bash
+PYTHON_REPL_PROVIDER=e2b
+E2B_API_KEY=your_api_key_here  # From https://e2b.dev
+```
+
+## API Endpoints
+
+### Execute Code
+
+```bash
+POST /execute
+```
+
+```json
+{
+  "code": "print('Hello, World!')\nresult = 1 + 1",
+  "timeout": 30,
+  "session_id": null
+}
+```
+
+Response:
+```json
+{
+  "stdout": "Hello, World!\n",
+  "stderr": "",
+  "result": null,
+  "error": null,
+  "execution_time_ms": 120,
+  "success": true,
+  "session_id": null
+}
+```
+
+### Create Session
+
+```bash
+POST /sessions
+```
+
+```json
+{
+  "user_id": "user123"
+}
+```
+
+Response:
+```json
+{
+  "session_id": "local_user123_1234567890",
+  "provider": "local",
+  "created_at": 1234567890
+}
+```
+
+### Execute in Session
+
+```bash
+POST /execute
+```
+
+```json
+{
+  "code": "x = 42",
+  "session_id": "local_user123_1234567890"
+}
+```
+
+### Get Session Variables
+
+```bash
+GET /sessions/{session_id}/variables
+```
+
+Response:
+```json
+{
+  "session_id": "local_user123_1234567890",
+  "variables": {
+    "x": "42"
+  }
+}
+```
+
+### Close Session
+
+```bash
+DELETE /sessions/{session_id}
+```
+
+### Health Check
+
+```bash
+GET /health
+```
+
+## Usage Examples
+
+### Stateless Execution
+
+```python
+import httpx
+
+async def execute_code(code: str):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "http://localhost:8001/execute",
+            json={"code": code, "timeout": 30}
+        )
+        return response.json()
+
+# Simple execution
+result = await execute_code("print('Hello!')")
+print(result["stdout"])  # "Hello!\n"
+```
+
+### Stateful Session
+
+```python
+import httpx
+
+class REPLSession:
+    def __init__(self, base_url: str = "http://localhost:8001"):
+        self.base_url = base_url
+        self.session_id = None
+
+    async def create(self, user_id: str):
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.base_url}/sessions",
+                json={"user_id": user_id}
+            )
+            data = response.json()
+            self.session_id = data["session_id"]
+            return self.session_id
+
+    async def execute(self, code: str):
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.base_url}/execute",
+                json={
+                    "code": code,
+                    "session_id": self.session_id
+                }
+            )
+            return response.json()
+
+    async def close(self):
+        async with httpx.AsyncClient() as client:
+            await client.delete(
+                f"{self.base_url}/sessions/{self.session_id}"
+            )
+
+# Usage
+session = REPLSession()
+await session.create("user123")
+await session.execute("x = 42")
+result = await session.execute("print(x)")  # Outputs: 42
+await session.close()
+```
+
+### Integration with MCP
+
+```python
+@mcp.tool()
+async def python_execute(code: str, session_id: str = None):
+    """Execute Python code in sandbox"""
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "http://localhost:8001/execute",
+            json={"code": code, "session_id": session_id}
+        )
+        return response.json()
+```
+
+## Security
+
+### Local Provider
+- ⚠️ Development only
+- Uses RestrictedPython
+- Process isolation via multiprocessing
+- Not suitable for production
+
+### E2B Provider
+- ✅ Production-grade
+- Firecracker microVM isolation
+- Complete network isolation
+- Resource limits and timeouts
+
+## Service Comparison
+
+| Service | Purpose | Persistence | Latency |
+|---------|---------|-------------|---------|
+| Cloud OS | Full Linux VM | Hours/days | ~2s |
+| Python REPL | Quick code exec | Minutes | < 200ms |
+| isA_App_SDK | Frontend render | Browser session | Real-time |
+
+## Adding Custom Providers
+
+```python
+# providers/my_provider.py
+from .base import ExecutionProvider, ExecutionResult
+
+class MyProvider(ExecutionProvider):
+    @property
+    def name(self) -> str:
+        return "my_provider"
+
+    async def execute(self, code: str, **kwargs) -> ExecutionResult:
+        # Implementation
+        return ExecutionResult(
+            stdout="output",
+            stderr="",
+            success=True
+        )
+
+    async def create_session(self, user_id: str) -> str:
+        return f"my_{user_id}_{time.time()}"
+
+    async def close_session(self, session_id: str) -> bool:
+        return True
+```
+
+## Next Steps
+
+- [Cloud OS](./cloud-os) - Full VM environment
+- [Pool Manager](./pool-manager) - Resource gateway
+- [Quick Start](./quickstart) - Getting started

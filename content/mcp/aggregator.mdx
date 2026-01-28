@@ -1,0 +1,143 @@
+# Server Aggregation
+
+Connect to external MCP servers and aggregate their tools.
+
+## Overview
+
+The MCP Server Aggregator enables:
+
+1. Connect to multiple external MCP servers (STDIO, SSE, HTTP)
+2. Aggregate tools into a unified registry
+3. Apply skill-based classification
+4. Route tool calls to the appropriate backend
+5. Monitor health and connection lifecycle
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                       ISA MCP PLATFORM                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │                   AGGREGATOR SERVICE                      │  │
+│  │  Server Registry │ Tool Aggregator │ Request Router      │  │
+│  │  Health Monitor  │ Session Manager │ Skill Classifier    │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                              │                                   │
+│          ┌───────────────────┼───────────────────┐              │
+│          ▼                   ▼                   ▼              │
+│  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐   │
+│  │  GitHub MCP    │  │   Slack MCP    │  │  Custom MCP    │   │
+│  │    (STDIO)     │  │     (SSE)      │  │    (HTTP)      │   │
+│  └────────────────┘  └────────────────┘  └────────────────┘   │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Adding External Servers
+
+```python
+result = await client.call_tool("add_mcp_server", {
+    "name": "github-mcp",
+    "transport_type": "SSE",
+    "connection_config": {
+        "url": "https://github-mcp.example.com/sse"
+    },
+    "auto_connect": True
+})
+
+print(f"Server ID: {result['data']['id']}")
+print(f"Status: {result['data']['status']}")
+```
+
+### Transport Types
+
+| Type | Config | Use Case |
+|------|--------|----------|
+| `STDIO` | `command`, `args`, `env` | Local processes |
+| `SSE` | `url`, `headers` | Server-Sent Events |
+| `HTTP` | `base_url`, `headers` | REST API |
+
+## Tool Namespacing
+
+External tools are namespaced to avoid collisions:
+
+```
+Server: github-mcp
+Original Tool: create_issue
+Namespaced: github-mcp.create_issue
+```
+
+## Tool Execution
+
+```python
+# Call via namespaced name
+result = await client.call_tool("github-mcp.create_issue", {
+    "repo": "owner/repo",
+    "title": "Bug report"
+})
+
+# Response includes routing metadata
+print(f"Routed to: {result['metadata']['routed_to']}")
+print(f"Routing time: {result['metadata']['routing_time_ms']}ms")
+```
+
+## Health Monitoring
+
+### Server Status
+
+| Status | Description |
+|--------|-------------|
+| `CONNECTED` | Healthy |
+| `DEGRADED` | Elevated errors |
+| `DISCONNECTED` | Intentionally offline |
+| `ERROR` | Unreachable |
+| `CONNECTING` | In progress |
+
+### Check Health
+
+```python
+result = await client.call_tool("get_server_status", {
+    "server_id": "uuid-1234"
+})
+
+print(f"Status: {result['data']['status']}")
+```
+
+## Connection Management
+
+```python
+# Connect
+await client.call_tool("connect_mcp_server", {"server_id": "uuid"})
+
+# Disconnect
+await client.call_tool("disconnect_mcp_server", {"server_id": "uuid"})
+
+# Remove
+await client.call_tool("remove_mcp_server", {"server_id": "uuid"})
+```
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/aggregator/servers` | POST | Register server |
+| `/api/v1/aggregator/servers` | GET | List servers |
+| `/api/v1/aggregator/servers/{id}` | GET | Get server |
+| `/api/v1/aggregator/servers/{id}/connect` | POST | Connect |
+| `/api/v1/aggregator/servers/{id}/disconnect` | POST | Disconnect |
+| `/api/v1/aggregator/servers/{id}` | DELETE | Remove |
+
+## Performance
+
+| Operation | Target |
+|-----------|--------|
+| Server registration | < 2s |
+| Tool discovery | < 5s per server |
+| Routing overhead | < 50ms |
+
+## Next Steps
+
+- [Search & Discovery](./search) - Searching aggregated tools
+- [Quick Start](./quickstart) - Basic client setup

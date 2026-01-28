@@ -1,0 +1,106 @@
+# isA OS Platform
+
+Operating system services for AI agents - VMs, desktops, browsers, and code execution.
+
+## Overview
+
+isA OS provides a unified platform for AI agents to interact with computing resources:
+
+| Service | Description | Port |
+|---------|-------------|------|
+| Pool Manager | Unified resource gateway | 8090 |
+| Cloud OS | VM management (Firecracker) | 8001 |
+| Desktop Agent | Desktop remote control | - |
+| Python REPL | Code execution sandbox | 8001 |
+| Web Services | Web automation | 8000 |
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    AGENTS & APPLICATIONS                         │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐              │
+│  │  Agent  │ │   MCP   │ │ Python  │ │   Web   │              │
+│  │  :8080  │ │  :8081  │ │  REPL   │ │Services │              │
+│  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘              │
+└───────┴──────────┴──────────┴──────────┴──────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      POOL MANAGER                                │
+│                (Unified Resource Gateway)                        │
+│                                                                  │
+│  POST /pools/{type}/acquire  → Get resource                     │
+│  POST /pools/{type}/{id}/execute → Run action                   │
+│  DELETE /pools/{type}/{id}/release → Return resource            │
+│                                                                  │
+│  Pool Types: browser | vm | repl | device | desktop             │
+└─────────────────────────────────────────────────────────────────┘
+                           │
+         ┌─────────────────┼─────────────────┐
+         ▼                 ▼                 ▼
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│    cloud_os     │ │   desktop_os    │ │    external     │
+│   (Virtual)     │ │   (Physical)    │ │  (3rd Party)    │
+│                 │ │                 │ │                 │
+│ • Firecracker   │ │ • User desktops │ │ • E2B           │
+│ • Docker        │ │ • 10 tools      │ │ • Browserbase   │
+│ • Python REPL   │ │ • WebSocket     │ │ • Modal         │
+│ • Browsers      │ │ • Heartbeat     │ │                 │
+└─────────────────┘ └─────────────────┘ └─────────────────┘
+```
+
+## Key Features
+
+### Pool Manager
+Central gateway for acquiring and managing all resources.
+
+### Cloud OS
+Virtual machine management using Firecracker microVMs:
+- Create/start/stop/delete VMs
+- Execute commands in VMs
+- File read/write operations
+- Resource limits (CPU, memory, disk)
+
+### Desktop Agent
+Allow AI agents to interact with personal desktops:
+- 10 built-in tools (file ops, bash, clipboard, screenshots)
+- WebSocket real-time connection
+- Visibility control (private, shared, friends, org)
+
+### Python REPL
+Isolated Python code execution:
+- Multiple providers (E2B, Local, Docker)
+- Session state persistence
+- Fast execution (< 200ms with E2B)
+
+### Web Services
+Web automation capabilities:
+- Web crawling (Markdown, HTML, structured data)
+- Web search (Brave API, AI summaries)
+- Deep search (multi-strategy, RAG)
+- Browser automation (LLM-driven)
+
+## Service Comparison
+
+| Feature | Cloud OS | Desktop Agent | Python REPL |
+|---------|----------|---------------|-------------|
+| Isolation | VM-level | Process-level | Sandbox |
+| Persistence | Hours/days | Session | Minutes |
+| Use Case | Full OS tasks | Desktop control | Code execution |
+| Latency | ~2s startup | Real-time | < 200ms |
+
+## Getting Started
+
+1. [Quick Start](./quickstart) - Basic setup
+2. [Pool Manager](./pool-manager) - Resource gateway
+3. [Cloud OS](./cloud-os) - VM management
+4. [Desktop Agent](./desktop-agent) - Desktop control
+5. [Python REPL](./python-repl) - Code execution
+6. [Web Automation](./web-automation) - Web services
+
+## Related Projects
+
+- **isA_MCP** - MCP tool layer (API consumer)
+- **isA_Agent** - AI agent framework
+- **isA_Cloud** - Infrastructure layer (Go/gRPC)

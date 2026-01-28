@@ -1,0 +1,260 @@
+# Providers
+
+Configure and use different AI model providers.
+
+## Overview
+
+isA Model supports multiple providers, each with different strengths:
+
+| Provider | Best For | Models |
+|----------|----------|--------|
+| `openai` | General purpose, latest models | gpt-4.1-nano, gpt-4o, o4-mini |
+| `anthropic` | Long context, safety | claude-3-opus, claude-3-sonnet |
+| `yyds` | Cost optimization (proxy) | gpt-4o-mini, gpt-4o |
+| `cerebras` | Ultra-fast inference | llama-3.3-70b |
+| `ollama` | Local/private deployment | llama3, mistral, codellama |
+| `replicate` | Specialized models | flux, stable-diffusion |
+
+## Configuration
+
+### Environment Variables
+
+```bash
+# Primary providers
+export OPENAI_API_KEY="sk-..."
+export ANTHROPIC_API_KEY="sk-ant-..."
+export CEREBRAS_API_KEY="..."
+
+# Proxy providers
+export YYDS_API_KEY="..."
+export YYDS_API_BASE="https://api.yyds.example.com/v1"
+
+# Local providers
+export OLLAMA_HOST="http://localhost:11434"
+
+# Image/video providers
+export REPLICATE_API_TOKEN="..."
+```
+
+### YAML Configuration
+
+Provider configs are in `isa_model/core/config/providers/`:
+
+```yaml
+# openai.yaml
+openai:
+  enabled: true
+  api_key: ${OPENAI_API_KEY}
+  api_base_url: https://api.openai.com/v1
+  organization: ${OPENAI_ORG_ID}  # Optional
+  default_model: gpt-4.1-nano
+  temperature: 0.7
+  max_tokens: 4096
+  rate_limit_rpm: 500
+  rate_limit_tpm: 200000
+```
+
+## Provider-Specific Features
+
+### OpenAI
+
+```python
+from isa_model.inference.ai_factory import AIFactory
+
+factory = AIFactory()
+
+# Standard chat
+llm = factory.get_service("text", "openai", "gpt-4.1-nano")
+
+# Reasoning model
+llm_reasoning = factory.get_service("text", "openai", "o4-mini")
+response = await llm_reasoning.ainvoke(
+    "Solve this math problem step by step",
+    show_reasoning=True
+)
+
+# Deep research (requires o4-deep-research)
+llm_research = factory.get_service("text", "openai", "o4-deep-research")
+result = await llm_research.invoke(
+    "Research the latest developments in quantum computing",
+    task="deep_research"
+)
+```
+
+### Anthropic
+
+```python
+# Claude models
+llm = factory.get_service("text", "anthropic", "claude-3-sonnet")
+
+# Long context (200K tokens)
+llm_long = factory.get_service("text", "anthropic", "claude-3-opus")
+response = await llm_long.ainvoke(very_long_document)
+```
+
+### Cerebras (Fast Inference)
+
+```python
+# Ultra-fast Llama inference
+llm = factory.get_service("text", "cerebras", "llama-3.3-70b")
+
+# Great for real-time applications
+async for token in llm.astream("Hello!"):
+    print(token, end="")  # Very fast token generation
+```
+
+### YYDS (Cost-Optimized Proxy)
+
+```python
+# Same models as OpenAI, lower cost
+llm = factory.get_service("text", "yyds", "gpt-4o-mini")
+
+# Useful as fallback provider
+response = await llm.ainvoke("Hello!")
+```
+
+### Ollama (Local)
+
+```python
+# Requires Ollama running locally
+llm = factory.get_service("text", "ollama", "llama3")
+
+# Private, no data leaves your machine
+response = await llm.ainvoke("Analyze this sensitive document")
+
+# Custom models
+llm_custom = factory.get_service("text", "ollama", "my-finetuned-model")
+```
+
+## Failover Configuration
+
+Automatic failover between providers:
+
+```python
+# Failover is automatic when using the /invoke API
+# Configure in inference.py:
+
+FALLBACK_PROVIDERS = {
+    "openai": ["yyds", "cerebras"],    # OpenAI -> YYDS -> Cerebras
+    "yyds": ["openai", "cerebras"],
+    "cerebras": ["yyds", "openai"],
+    "anthropic": ["openai", "yyds"],
+}
+
+# Model mapping for failover compatibility
+FAILOVER_MODEL_MAPPING = {
+    "gpt-4.1-mini": {
+        "openai": "gpt-4.1-mini",
+        "yyds": "gpt-4o-mini",
+        "cerebras": "llama-3.3-70b",
+    },
+}
+```
+
+## Adding a New Provider
+
+1. Create service class in `isa_model/inference/services/llm/`:
+
+```python
+# my_provider_llm_service.py
+from .base_llm_service import BaseLLMService
+
+class MyProviderLLMService(BaseLLMService):
+    def __init__(self, model_name: str, **kwargs):
+        super().__init__("my_provider", model_name, **kwargs)
+        # Initialize client
+
+    async def ainvoke(self, input_data, **kwargs):
+        # Implement inference
+        pass
+
+    async def astream(self, input_data):
+        # Implement streaming
+        pass
+```
+
+2. Add config in `isa_model/core/config/providers/`:
+
+```yaml
+# my_provider.yaml
+my_provider:
+  enabled: true
+  api_key: ${MY_PROVIDER_API_KEY}
+  api_base_url: https://api.myprovider.com/v1
+  default_model: my-model-v1
+```
+
+3. Register in `AIFactory`:
+
+```python
+# In ai_factory.py
+from .services.llm.my_provider_llm_service import MyProviderLLMService
+
+SERVICE_MAP = {
+    "text": {
+        "my_provider": MyProviderLLMService,
+        # ...
+    }
+}
+```
+
+## Provider Health Checks
+
+```python
+# Check provider availability
+from isa_model.inference.ai_factory import AIFactory
+
+factory = AIFactory()
+
+# Get health status
+health = await factory.check_provider_health("openai")
+print(f"OpenAI healthy: {health['status']}")
+print(f"Latency: {health['latency_ms']}ms")
+```
+
+### Via API
+
+```bash
+# Check all providers
+curl http://localhost:8082/api/v1/failover/health
+
+# Check specific provider
+curl http://localhost:8082/api/v1/failover/circuit/openai
+```
+
+## Rate Limiting
+
+Providers have built-in rate limiting:
+
+```yaml
+# Provider config
+openai:
+  rate_limit_rpm: 500    # Requests per minute
+  rate_limit_tpm: 200000 # Tokens per minute
+```
+
+When limits are hit, the service automatically:
+1. Retries with exponential backoff
+2. Falls back to alternative provider
+3. Returns rate limit error if all options exhausted
+
+## Cost Tracking
+
+Usage is tracked per provider:
+
+```python
+# Get usage with cost
+usage = llm.get_last_usage_with_cost()
+print(f"Provider: {usage['provider']}")
+print(f"Model: {usage['model']}")
+print(f"Tokens: {usage['total_tokens']}")
+print(f"Cost: ${usage['cost_usd']:.4f}")
+```
+
+Pricing is configured in `isa_model/model/pricing.yaml`.
+
+## Next Steps
+
+- [LLM Services](./llm-services) - Using LLM services
+- [Caching](./caching) - Reduce costs with caching
+- [Tool Calling](./tool-calling) - Provider tool support

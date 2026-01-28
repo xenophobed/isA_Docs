@@ -1,0 +1,236 @@
+# Quick Start
+
+Get started with isA Model in minutes.
+
+## Installation
+
+```bash
+pip install isa-model
+```
+
+## Prerequisites
+
+Set up your API keys:
+
+```bash
+export OPENAI_API_KEY="sk-..."
+export ANTHROPIC_API_KEY="sk-ant-..."  # Optional
+```
+
+## Basic Usage
+
+### Using the Client
+
+```python
+from isa_model import AsyncISAModel
+
+async def main():
+    async with AsyncISAModel() as model:
+        # Simple text generation
+        response = await model.invoke(
+            input_data="What is the capital of France?",
+            model="gpt-4.1-nano",
+            provider="openai"
+        )
+        print(response)
+
+import asyncio
+asyncio.run(main())
+```
+
+### Chat Conversations
+
+```python
+from isa_model import AsyncISAModel
+
+messages = [
+    {"role": "system", "content": "You are a helpful assistant."},
+    {"role": "user", "content": "Hello!"},
+]
+
+async with AsyncISAModel() as model:
+    response = await model.invoke(
+        input_data=messages,
+        model="gpt-4.1-nano",
+        provider="openai",
+        service_type="text",
+        task="chat"
+    )
+    print(response["content"])
+```
+
+### Streaming Responses
+
+```python
+from isa_model import AsyncISAModel
+
+async with AsyncISAModel() as model:
+    async for chunk in model.stream(
+        input_data="Write a short poem about coding",
+        model="gpt-4.1-nano",
+        provider="openai",
+        stream=True
+    ):
+        print(chunk, end="", flush=True)
+    print()  # Newline at end
+```
+
+## Using the REST API
+
+### Start the Server
+
+```bash
+# Using the local dev script
+./deployment/local-dev.sh --run
+
+# Or directly with uvicorn
+uvicorn isa_model.serving.api.fastapi_server:app --port 8082
+```
+
+### Make Requests
+
+```bash
+# Simple chat
+curl -X POST http://localhost:8082/api/v1/invoke \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input_data": [{"role": "user", "content": "Hello!"}],
+    "model": "gpt-4.1-nano",
+    "provider": "openai",
+    "service_type": "text",
+    "task": "chat"
+  }'
+
+# Streaming (SSE)
+curl -X POST http://localhost:8082/api/v1/invoke \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input_data": [{"role": "user", "content": "Write a story"}],
+    "model": "gpt-4.1-nano",
+    "provider": "openai",
+    "service_type": "text",
+    "stream": true
+  }'
+```
+
+## Direct Service Usage
+
+For more control, use services directly:
+
+```python
+from isa_model.inference.ai_factory import AIFactory
+
+# Create factory
+factory = AIFactory()
+
+# Get an LLM service
+llm = factory.get_service(
+    service_type="text",
+    provider="openai",
+    model="gpt-4.1-nano"
+)
+
+# Simple invoke
+response = await llm.ainvoke("Hello, how are you?")
+print(response)
+
+# With message history
+messages = [
+    {"role": "user", "content": "My name is Alice"},
+    {"role": "assistant", "content": "Hello Alice!"},
+    {"role": "user", "content": "What's my name?"}
+]
+response = await llm.ainvoke(messages)
+print(response)  # "Your name is Alice"
+
+# Streaming
+async for token in llm.astream("Explain quantum computing"):
+    print(token, end="", flush=True)
+```
+
+## Provider Selection
+
+### Available Providers
+
+| Provider | Models | Best For |
+|----------|--------|----------|
+| `openai` | gpt-4.1-nano, gpt-4o, o4-mini | General purpose |
+| `anthropic` | claude-3-opus, claude-3-sonnet | Long context |
+| `yyds` | gpt-4o-mini (proxy) | Cost optimization |
+| `cerebras` | llama-3.3-70b | Speed |
+| `ollama` | llama3, mistral | Local/private |
+
+### Switching Providers
+
+```python
+# OpenAI
+response = await model.invoke(
+    input_data="Hello",
+    model="gpt-4.1-nano",
+    provider="openai"
+)
+
+# Cerebras (fast inference)
+response = await model.invoke(
+    input_data="Hello",
+    model="llama-3.3-70b",
+    provider="cerebras"
+)
+
+# Local Ollama
+response = await model.invoke(
+    input_data="Hello",
+    model="llama3",
+    provider="ollama"
+)
+```
+
+## Configuration Options
+
+```python
+response = await model.invoke(
+    input_data="Write a story",
+    model="gpt-4.1-nano",
+    provider="openai",
+
+    # Generation parameters
+    temperature=0.7,
+    max_tokens=1000,
+
+    # Service configuration
+    service_type="text",
+    task="chat",
+
+    # Streaming
+    stream=False,
+
+    # User tracking (for billing)
+    user_id="user-123"
+)
+```
+
+## Error Handling
+
+```python
+from isa_model import AsyncISAModel
+from isa_model.core.types import ProviderType
+
+async with AsyncISAModel() as model:
+    try:
+        response = await model.invoke(
+            input_data="Hello",
+            model="gpt-4.1-nano",
+            provider="openai"
+        )
+    except ValueError as e:
+        print(f"Invalid configuration: {e}")
+    except Exception as e:
+        print(f"Request failed: {e}")
+```
+
+## Next Steps
+
+- [LLM Services](./llm-services) - Advanced LLM usage
+- [Tool Calling](./tool-calling) - Function calling
+- [Providers](./providers) - Provider configuration
+- [Caching](./caching) - Cache optimization

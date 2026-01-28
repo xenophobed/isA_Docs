@@ -1,0 +1,58 @@
+# isA Platform
+
+Deploy and scale your AI agents in the cloud.
+
+## Overview
+
+The isA Platform provides infrastructure for deploying, managing, and scaling AI agents built with the Agent SDK.
+
+## Key Features
+
+### Code Deployment
+Deploy your custom agents to production with a single command:
+
+```bash
+# Upload and deploy
+tar -czf my-agent.tar.gz -C my-agent .
+curl -X POST /api/v1/deployments/{id}/upload -F "file=@my-agent.tar.gz"
+curl -X POST /api/v1/deployments/{id}/deploy
+```
+
+### Auto-Scaling
+- Automatic scaling based on load
+- Configurable min/max replicas
+- Zero-downtime deployments
+
+### Isolation & Security
+- VM-level isolation for each execution
+- Network isolation (no direct external access)
+- Sandboxed tool execution
+
+### Monitoring
+- Real-time logs and metrics
+- Health checking
+- Alerting and notifications
+
+## Architecture
+
+```
+User Request → API Gateway → Pool Manager → Cloud OS VM
+                                           └─→ API Proxy → External Services
+```
+
+## Deployment Workflow
+
+1. Create deployment configuration
+2. Upload code (tar.gz or Git)
+3. Automatic Docker image build
+4. Deploy to Cloud OS VMs
+5. Route traffic to your agent
+
+## Coming Soon
+
+Full documentation including:
+- CLI tool (`isa deploy`)
+- CI/CD integration
+- Custom domains
+- Environment variables
+- Secrets management

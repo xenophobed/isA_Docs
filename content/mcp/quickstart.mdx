@@ -1,0 +1,149 @@
+# Quick Start
+
+Get started with ISA MCP in minutes.
+
+## Prerequisites
+
+- Python 3.10+
+- Running MCP server on `http://localhost:8081`
+
+## Installation
+
+```bash
+cd /path/to/isA_MCP
+
+# Start the server
+python main.py
+```
+
+## Basic Client
+
+```python
+import asyncio
+import aiohttp
+import json
+from typing import Dict, Any
+
+class MCPClient:
+    """Simple MCP client"""
+
+    def __init__(self, base_url: str = "http://localhost:8081"):
+        self.base_url = base_url
+        self.mcp_endpoint = f"{base_url}/mcp"
+
+    async def get_health(self) -> Dict[str, Any]:
+        """Get server health"""
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{self.base_url}/health") as response:
+                return await response.json()
+
+    async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Call an MCP tool"""
+        payload = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {"name": tool_name, "arguments": arguments}
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                self.mcp_endpoint,
+                json=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Accept": "application/json, text/event-stream"
+                }
+            ) as response:
+                response_text = await response.text()
+
+                # Handle SSE format
+                if "data: " in response_text:
+                    for line in response_text.strip().split('\n'):
+                        if line.startswith('data: '):
+                            return json.loads(line[6:])
+
+                return json.loads(response_text)
+
+
+async def main():
+    client = MCPClient()
+
+    # Check server health
+    health = await client.get_health()
+    print(f"Server: {health['status']}")
+    print(f"Tools: {health['capabilities']['tools']}")
+
+asyncio.run(main())
+```
+
+## Core Operations
+
+### Health Check
+
+```python
+health = await client.get_health()
+# Output:
+# {
+#   "status": "healthy",
+#   "capabilities": {"tools": 88, "prompts": 50, "resources": 9}
+# }
+```
+
+### Call Tool
+
+```python
+result = await client.call_tool("calculator", {
+    "operation": "add",
+    "a": 10,
+    "b": 20
+})
+```
+
+### Semantic Search
+
+```python
+async with aiohttp.ClientSession() as session:
+    async with session.post(
+        "http://localhost:8081/search",
+        json={
+            "query": "weather information",
+            "type": "tool",
+            "limit": 5,
+            "score_threshold": 0.3
+        }
+    ) as response:
+        results = await response.json()
+
+for tool in results['results']:
+    print(f"{tool['name']} (score: {tool['score']:.3f})")
+```
+
+## Concurrent Calls
+
+Execute multiple tool calls in parallel:
+
+```python
+results = await asyncio.gather(
+    client.call_tool("calculator", {"operation": "add", "a": 10, "b": 20}),
+    client.call_tool("calculator", {"operation": "add", "a": 30, "b": 40}),
+    client.call_tool("calculator", {"operation": "add", "a": 50, "b": 60})
+)
+# Results: 30.0, 70.0, 110.0
+```
+
+## Error Handling
+
+```python
+result = await client.call_tool("nonexistent_tool", {})
+
+if "error" in result:
+    print(f"Error: {result['error'].get('message')}")
+```
+
+## Next Steps
+
+- [Search & Discovery](./search) - Semantic and hierarchical search
+- [Human-in-the-Loop](./hil) - Human interaction
+- [Progress Tracking](./progress) - Monitor long operations
+- [Server Aggregation](./aggregator) - External MCP servers
