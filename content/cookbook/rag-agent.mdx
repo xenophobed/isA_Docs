@@ -1,0 +1,375 @@
+# RAG Agent
+
+Build an agent that answers questions from your documents using Retrieval-Augmented Generation (RAG).
+
+## What We're Building
+
+A RAG agent that:
+- Ingests documents (PDF, Markdown, text)
+- Stores embeddings in a vector database
+- Retrieves relevant context for questions
+- Generates accurate, cited answers
+
+## Architecture
+
+```
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  Documents   │────▶│   Chunking   │────▶│  Embeddings  │
+└──────────────┘     └──────────────┘     └──────────────┘
+                                                  │
+                                                  ▼
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│    Answer    │◀────│     LLM      │◀────│   Qdrant     │
+└──────────────┘     └──────────────┘     └──────────────┘
+                            ▲
+                            │
+                     ┌──────────────┐
+                     │   Question   │
+                     └──────────────┘
+```
+
+## Quick Start
+
+```python
+from isa_agent_sdk import Agent
+from isa_agent_sdk.rag import DocumentStore
+
+# Create a document store
+store = DocumentStore(
+    collection="my-docs",
+    embedding_model="text-embedding-3-small"
+)
+
+# Ingest documents
+await store.ingest("./documents/")
+
+# Create RAG agent
+agent = Agent(
+    name="rag-agent",
+    model="claude-sonnet-4-20250514",
+    tools=[store.as_tool()]
+)
+
+# Ask questions
+response = await agent.run("What does the documentation say about authentication?")
+```
+
+## Step-by-Step Implementation
+
+### 1. Set Up the Document Store
+
+import { Tabs } from 'nextra/components'
+
+<Tabs items={['Python', 'Using isA Data']}>
+  <Tabs.Tab>
+```python
+from isa_agent_sdk.rag import DocumentStore, ChunkingStrategy
+
+# Initialize document store with Qdrant
+store = DocumentStore(
+    # Vector database configuration
+    vector_db="qdrant",
+    collection="company-docs",
+
+    # Embedding configuration
+    embedding_model="text-embedding-3-small",
+    embedding_dimensions=1536,
+
+    # Chunking strategy
+    chunking=ChunkingStrategy(
+        method="semantic",  # or "fixed", "sentence"
+        chunk_size=512,
+        chunk_overlap=50
+    )
+)
+```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```python
+from isa_data import RAGPipeline
+
+# Use isA Data's built-in RAG pipeline
+pipeline = RAGPipeline(
+    name="company-docs",
+    vector_store="qdrant",
+    embedding_model="text-embedding-3-small"
+)
+
+# The pipeline handles chunking, embedding, and storage
+await pipeline.ingest("./documents/")
+```
+  </Tabs.Tab>
+</Tabs>
+
+### 2. Ingest Documents
+
+```python
+# Ingest a directory of documents
+await store.ingest(
+    "./documents/",
+    file_types=["pdf", "md", "txt", "docx"],
+    metadata_extractor=lambda doc: {
+        "source": doc.filename,
+        "category": doc.parent_folder
+    }
+)
+
+# Ingest specific files
+await store.ingest_file("./important-doc.pdf", metadata={"priority": "high"})
+
+# Ingest from URL
+await store.ingest_url(
+    "https://docs.example.com/api-reference",
+    metadata={"type": "api-docs"}
+)
+
+# Check ingestion status
+stats = await store.stats()
+print(f"Documents: {stats.document_count}")
+print(f"Chunks: {stats.chunk_count}")
+print(f"Vector dimensions: {stats.dimensions}")
+```
+
+### 3. Create the RAG Agent
+
+```python
+from isa_agent_sdk import Agent
+
+# Create the retrieval tool
+retrieval_tool = store.as_tool(
+    name="search_docs",
+    description="Search the company documentation for relevant information",
+    top_k=5,  # Number of chunks to retrieve
+    score_threshold=0.7  # Minimum similarity score
+)
+
+# Create the agent
+agent = Agent(
+    name="docs-assistant",
+    model="claude-sonnet-4-20250514",
+    tools=[retrieval_tool],
+    system_prompt="""You are a documentation assistant. Answer questions based on the retrieved documentation.
+
+    Guidelines:
+    - Always search the docs before answering
+    - Cite your sources with document names
+    - If information isn't in the docs, say so
+    - Be precise and accurate
+    """
+)
+```
+
+### 4. Query with Citations
+
+```python
+from isa_agent_sdk import Agent
+from isa_agent_sdk.rag import CitationFormatter
+
+agent = Agent(
+    name="rag-with-citations",
+    model="claude-sonnet-4-20250514",
+    tools=[store.as_tool()],
+    system_prompt="""Answer questions using the documentation.
+    Always cite sources using [Source: filename] format."""
+)
+
+response = await agent.run("How do I configure authentication?")
+print(response.content)
+# Output: "To configure authentication, set the AUTH_SECRET environment variable... [Source: auth-guide.md]"
+
+# Get structured citations
+citations = CitationFormatter.extract(response)
+for cite in citations:
+    print(f"- {cite.source}: {cite.text}")
+```
+
+### 5. Advanced Retrieval
+
+```python
+from isa_agent_sdk.rag import HybridSearch, Reranker
+
+# Hybrid search (vector + keyword)
+hybrid_tool = store.as_tool(
+    search_strategy=HybridSearch(
+        vector_weight=0.7,
+        keyword_weight=0.3
+    )
+)
+
+# With reranking for better accuracy
+reranked_tool = store.as_tool(
+    top_k=20,  # Retrieve more initially
+    reranker=Reranker(
+        model="cross-encoder",
+        top_n=5  # Return top 5 after reranking
+    )
+)
+
+# Filtered search
+filtered_tool = store.as_tool(
+    filters={
+        "category": "api-docs",
+        "updated_after": "2025-01-01"
+    }
+)
+```
+
+## Production Example
+
+Complete production-ready RAG system:
+
+```python
+from isa_agent_sdk import Agent
+from isa_agent_sdk.rag import (
+    DocumentStore,
+    ChunkingStrategy,
+    HybridSearch,
+    Reranker,
+    CitationFormatter
+)
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+class RAGAssistant:
+    def __init__(self, collection: str):
+        # Initialize document store
+        self.store = DocumentStore(
+            vector_db="qdrant",
+            collection=collection,
+            embedding_model="text-embedding-3-small",
+            chunking=ChunkingStrategy(
+                method="semantic",
+                chunk_size=512,
+                chunk_overlap=50
+            )
+        )
+
+        # Create retrieval tool with hybrid search
+        self.retrieval_tool = self.store.as_tool(
+            name="search_knowledge_base",
+            description="Search the knowledge base for relevant information",
+            search_strategy=HybridSearch(
+                vector_weight=0.7,
+                keyword_weight=0.3
+            ),
+            top_k=10,
+            reranker=Reranker(model="cross-encoder", top_n=5)
+        )
+
+        # Create the agent
+        self.agent = Agent(
+            name="rag-assistant",
+            model="claude-sonnet-4-20250514",
+            tools=[self.retrieval_tool],
+            system_prompt="""You are a knowledgeable assistant with access to a documentation database.
+
+            Instructions:
+            1. Always search the knowledge base before answering
+            2. Base your answers strictly on retrieved information
+            3. Cite sources using [Source: document_name] format
+            4. If the information isn't available, clearly state that
+            5. Provide accurate, helpful responses
+
+            Remember: accuracy is more important than completeness.
+            """
+        )
+
+    async def ingest_documents(self, path: str):
+        """Ingest documents from a directory."""
+        logger.info(f"Ingesting documents from {path}")
+        await self.store.ingest(path)
+        stats = await self.store.stats()
+        logger.info(f"Ingested {stats.chunk_count} chunks from {stats.document_count} documents")
+
+    async def ask(self, question: str) -> dict:
+        """Ask a question and get an answer with citations."""
+        try:
+            response = await self.agent.run(question)
+
+            # Extract citations
+            citations = CitationFormatter.extract(response)
+
+            return {
+                "answer": response.content,
+                "citations": [
+                    {"source": c.source, "text": c.text}
+                    for c in citations
+                ],
+                "tokens_used": response.usage.total_tokens
+            }
+        except Exception as e:
+            logger.error(f"Error answering question: {e}")
+            return {
+                "answer": "I encountered an error processing your question.",
+                "citations": [],
+                "error": str(e)
+            }
+
+    async def stream_answer(self, question: str):
+        """Stream the answer for real-time display."""
+        async for chunk in self.agent.stream(question):
+            yield chunk.content
+
+# Usage
+async def main():
+    # Initialize
+    assistant = RAGAssistant(collection="company-kb")
+
+    # Ingest documents
+    await assistant.ingest_documents("./docs/")
+
+    # Ask questions
+    result = await assistant.ask("What are the API rate limits?")
+    print(f"Answer: {result['answer']}")
+    print(f"Sources: {[c['source'] for c in result['citations']]}")
+
+    # Stream response
+    print("\nStreaming: ", end="")
+    async for chunk in assistant.stream_answer("How do I authenticate?"):
+        print(chunk, end="", flush=True)
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())
+```
+
+## Try It
+
+<DemoPlayground
+  endpoint="/v1/rag/query"
+  method="POST"
+  defaultBody={`{
+  "collection": "demo-docs",
+  "query": "How do I configure authentication?",
+  "top_k": 5
+}`}
+  sampleResponse={`{
+  "answer": "To configure authentication, you need to set the AUTH_SECRET environment variable and enable JWT tokens in your config file.",
+  "citations": [
+    {
+      "source": "auth-guide.md",
+      "text": "Set AUTH_SECRET to a secure random string...",
+      "score": 0.92
+    }
+  ],
+  "tokens_used": 847
+}`}
+/>
+
+## Best Practices
+
+1. **Chunk size matters** - Too small loses context, too large dilutes relevance
+2. **Use hybrid search** - Combines semantic and keyword matching
+3. **Implement reranking** - Improves accuracy at slight latency cost
+4. **Add metadata** - Enables filtering and better citations
+5. **Monitor retrieval quality** - Track which documents get retrieved
+
+## Next Steps
+
+- [Data Analyst Agent](/cookbook/data-analyst) - Analyze data with AI
+- [Multi-Agent System](/cookbook/multi-agent) - Combine RAG with other agents
+- [isA Data Platform](/data) - Full data infrastructure
+
+<FeedbackWidget />

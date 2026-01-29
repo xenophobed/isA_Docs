@@ -1,0 +1,182 @@
+# Advanced Tool Use
+
+Master advanced patterns for using and creating tools.
+
+## Built-in Tools
+
+isA provides 50+ tools out of the box:
+
+```python
+from isa_agent_sdk import Agent
+
+agent = Agent(
+    name="tool-user",
+    model="claude-sonnet-4-20250514",
+    tools=[
+        "web_search",      # Search the web
+        "calculator",      # Math operations
+        "code_interpreter", # Run Python
+        "file_read",       # Read files
+        "file_write",      # Write files
+        "shell",           # Execute commands
+        "browser",         # Web automation
+        "database_query",  # SQL queries
+    ]
+)
+```
+
+## Custom Tools
+
+Create your own tools:
+
+```python
+from isa_agent_sdk import Agent, tool
+
+@tool
+def get_weather(city: str) -> str:
+    """Get current weather for a city.
+
+    Args:
+        city: Name of the city
+
+    Returns:
+        Weather information as a string
+    """
+    # Your implementation
+    return f"Weather in {city}: 72°F, Sunny"
+
+@tool
+def search_inventory(query: str, category: str = None) -> list:
+    """Search product inventory.
+
+    Args:
+        query: Search query
+        category: Optional category filter
+
+    Returns:
+        List of matching products
+    """
+    # Your implementation
+    return [{"name": "Widget", "stock": 100}]
+
+agent = Agent(
+    name="custom-tools",
+    tools=[get_weather, search_inventory]
+)
+
+response = await agent.run("What's the weather in Tokyo?")
+```
+
+## Tool Schemas
+
+Define tools with JSON Schema:
+
+```python
+from isa_agent_sdk import Agent, Tool
+
+weather_tool = Tool(
+    name="get_weather",
+    description="Get current weather for a location",
+    parameters={
+        "type": "object",
+        "properties": {
+            "location": {
+                "type": "string",
+                "description": "City name or coordinates"
+            },
+            "units": {
+                "type": "string",
+                "enum": ["celsius", "fahrenheit"],
+                "default": "celsius"
+            }
+        },
+        "required": ["location"]
+    },
+    handler=lambda params: fetch_weather(**params)
+)
+
+agent = Agent(tools=[weather_tool])
+```
+
+## Async Tools
+
+For I/O-bound operations:
+
+```python
+from isa_agent_sdk import tool
+import httpx
+
+@tool
+async def fetch_api(endpoint: str, method: str = "GET") -> dict:
+    """Fetch data from an API endpoint.
+
+    Args:
+        endpoint: API URL
+        method: HTTP method
+
+    Returns:
+        JSON response
+    """
+    async with httpx.AsyncClient() as client:
+        response = await client.request(method, endpoint)
+        return response.json()
+```
+
+## Tool Composition
+
+Combine tools for complex operations:
+
+```python
+from isa_agent_sdk import Agent, tool
+
+@tool
+def analyze_and_report(data_path: str, output_path: str) -> str:
+    """Load data, analyze it, and save a report.
+
+    This tool combines file reading, analysis, and writing.
+    """
+    # Read
+    data = load_csv(data_path)
+
+    # Analyze
+    summary = analyze(data)
+
+    # Write
+    save_report(summary, output_path)
+
+    return f"Report saved to {output_path}"
+
+# Or let the agent compose tools
+agent = Agent(
+    tools=["file_read", "code_interpreter", "file_write"],
+    system_prompt="You can read data, analyze with Python, and save results."
+)
+```
+
+## Error Handling
+
+Handle tool failures gracefully:
+
+```python
+from isa_agent_sdk import tool, ToolError
+
+@tool
+def risky_operation(param: str) -> str:
+    """Operation that might fail."""
+    try:
+        result = do_something(param)
+        return result
+    except ConnectionError:
+        raise ToolError(
+            "Could not connect to service",
+            recoverable=True,
+            suggestion="Try again in a moment"
+        )
+    except ValueError as e:
+        raise ToolError(
+            f"Invalid parameter: {e}",
+            recoverable=False
+        )
+```
+
+<FeedbackWidget />

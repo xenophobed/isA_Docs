@@ -1,0 +1,322 @@
+# Build a Chatbot
+
+Create a conversational AI chatbot with memory and personality.
+
+## What We're Building
+
+A chatbot that:
+- Remembers conversation history
+- Has a customizable personality
+- Can use tools like web search
+- Streams responses in real-time
+
+## Quick Start
+
+```python
+from isa_agent_sdk import Agent
+
+agent = Agent(
+    name="friendly-bot",
+    model="claude-sonnet-4-20250514",
+    system_prompt="You are a friendly, helpful assistant named Aria.",
+    memory={"type": "session"}
+)
+
+async for msg in agent.stream("Hello! What's your name?"):
+    print(msg.content, end="")
+```
+
+## Step-by-Step Implementation
+
+### 1. Basic Chatbot
+
+Start with a simple conversational agent:
+
+import { Tabs } from 'nextra/components'
+
+<Tabs items={['Python', 'JavaScript']}>
+  <Tabs.Tab>
+```python
+from isa_agent_sdk import Agent
+import asyncio
+
+# Create the agent
+agent = Agent(
+    name="chatbot",
+    model="claude-sonnet-4-20250514",
+    system_prompt="""You are Aria, a friendly AI assistant.
+
+    Personality traits:
+    - Warm and approachable
+    - Curious and eager to help
+    - Uses casual but professional language
+    - Occasionally uses emoji sparingly
+    """
+)
+
+async def chat():
+    print("Aria: Hi! I'm Aria. How can I help you today?")
+
+    while True:
+        user_input = input("You: ")
+        if user_input.lower() in ['quit', 'exit', 'bye']:
+            print("Aria: Goodbye! Have a great day! 👋")
+            break
+
+        response = await agent.run(user_input)
+        print(f"Aria: {response.content}")
+
+asyncio.run(chat())
+```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```javascript
+import { Agent } from 'isa-agent-sdk';
+import * as readline from 'readline';
+
+const agent = new Agent({
+    name: "chatbot",
+    model: "claude-sonnet-4-20250514",
+    systemPrompt: `You are Aria, a friendly AI assistant.
+
+    Personality traits:
+    - Warm and approachable
+    - Curious and eager to help
+    - Uses casual but professional language
+    `
+});
+
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+async function chat() {
+    console.log("Aria: Hi! I'm Aria. How can I help you today?");
+
+    const askQuestion = () => {
+        rl.question("You: ", async (input) => {
+            if (['quit', 'exit', 'bye'].includes(input.toLowerCase())) {
+                console.log("Aria: Goodbye! Have a great day!");
+                rl.close();
+                return;
+            }
+
+            const response = await agent.run(input);
+            console.log(`Aria: ${response.content}`);
+            askQuestion();
+        });
+    };
+
+    askQuestion();
+}
+
+chat();
+```
+  </Tabs.Tab>
+</Tabs>
+
+### 2. Add Persistent Memory
+
+Enable your chatbot to remember conversations across sessions:
+
+```python
+from isa_agent_sdk import Agent
+
+agent = Agent(
+    name="chatbot-with-memory",
+    model="claude-sonnet-4-20250514",
+    system_prompt="You are Aria. Remember user preferences and past conversations.",
+    memory={
+        "type": "persistent",
+        "store": "redis",
+        "ttl": 86400 * 30,  # 30 days
+        "user_id": "user-123"  # Unique identifier for the user
+    }
+)
+
+# First conversation
+await agent.run("My favorite color is blue and I love hiking.")
+
+# Later conversation (even after restart)
+response = await agent.run("What are my hobbies?")
+# Response: "You mentioned that you love hiking!"
+```
+
+### 3. Add Tool Capabilities
+
+Give your chatbot the ability to search the web and more:
+
+```python
+from isa_agent_sdk import Agent
+
+agent = Agent(
+    name="chatbot-with-tools",
+    model="claude-sonnet-4-20250514",
+    tools=["web_search", "calculator", "weather"],
+    system_prompt="""You are Aria, a helpful assistant with access to tools.
+
+    When users ask questions that require current information:
+    - Use web_search for news, facts, and general queries
+    - Use weather for weather forecasts
+    - Use calculator for math problems
+
+    Always cite your sources when using web search.
+    """
+)
+
+# The agent will automatically use tools when needed
+response = await agent.run("What's the weather like in Tokyo?")
+```
+
+### 4. Implement Streaming
+
+Provide a better user experience with streaming responses:
+
+```python
+from isa_agent_sdk import Agent
+
+agent = Agent(
+    name="streaming-chatbot",
+    model="claude-sonnet-4-20250514"
+)
+
+async def stream_chat(user_message: str):
+    print("Aria: ", end="", flush=True)
+
+    async for chunk in agent.stream(user_message):
+        print(chunk.content, end="", flush=True)
+
+    print()  # New line after response
+
+# Usage
+await stream_chat("Tell me a story about a robot learning to paint.")
+```
+
+## Production Considerations
+
+### Rate Limiting
+
+```python
+from isa_agent_sdk import Agent, RateLimiter
+
+agent = Agent(
+    name="production-chatbot",
+    rate_limiter=RateLimiter(
+        requests_per_minute=60,
+        tokens_per_minute=100000
+    )
+)
+```
+
+### Error Handling
+
+```python
+from isa_agent_sdk import Agent, AgentError
+
+agent = Agent(name="safe-chatbot")
+
+async def safe_chat(message: str):
+    try:
+        response = await agent.run(message)
+        return response.content
+    except AgentError as e:
+        if e.code == "rate_limit":
+            return "I'm a bit busy right now. Please try again in a moment."
+        elif e.code == "context_length":
+            return "That's a lot to process! Could you break it into smaller parts?"
+        else:
+            return "Something went wrong. Please try again."
+```
+
+### Logging and Monitoring
+
+```python
+from isa_agent_sdk import Agent
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
+agent = Agent(
+    name="monitored-chatbot",
+    callbacks={
+        "on_start": lambda msg: logging.info(f"User: {msg}"),
+        "on_complete": lambda resp: logging.info(f"Bot: {resp.content[:100]}..."),
+        "on_error": lambda e: logging.error(f"Error: {e}"),
+        "on_tool_use": lambda tool, args: logging.info(f"Using tool: {tool}")
+    }
+)
+```
+
+## Full Example
+
+Here's a complete production-ready chatbot:
+
+```python
+from isa_agent_sdk import Agent, RateLimiter
+import asyncio
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+class Chatbot:
+    def __init__(self, user_id: str):
+        self.agent = Agent(
+            name="aria",
+            model="claude-sonnet-4-20250514",
+            tools=["web_search", "calculator"],
+            memory={
+                "type": "persistent",
+                "store": "redis",
+                "user_id": user_id
+            },
+            system_prompt="""You are Aria, a friendly and knowledgeable AI assistant.
+
+            Guidelines:
+            - Be helpful, harmless, and honest
+            - Use tools when you need current information
+            - Remember user preferences from past conversations
+            - Keep responses concise but informative
+            """,
+            rate_limiter=RateLimiter(requests_per_minute=30)
+        )
+
+    async def chat(self, message: str) -> str:
+        try:
+            response = await self.agent.run(message)
+            return response.content
+        except Exception as e:
+            logger.error(f"Chat error: {e}")
+            return "I encountered an issue. Please try again."
+
+    async def stream_chat(self, message: str):
+        try:
+            async for chunk in self.agent.stream(message):
+                yield chunk.content
+        except Exception as e:
+            logger.error(f"Stream error: {e}")
+            yield "I encountered an issue. Please try again."
+
+# Usage
+async def main():
+    bot = Chatbot(user_id="user-123")
+
+    # Regular chat
+    response = await bot.chat("What's 25 * 47?")
+    print(response)
+
+    # Streaming chat
+    async for chunk in bot.stream_chat("Tell me about Python"):
+        print(chunk, end="", flush=True)
+
+asyncio.run(main())
+```
+
+## Next Steps
+
+- [Add RAG capabilities](/cookbook/rag-agent) - Answer questions from your documents
+- [Multi-agent system](/cookbook/multi-agent) - Create specialized agents that work together
+- [Deploy to production](/cloud/deployment) - Scale your chatbot
+
+<FeedbackWidget />

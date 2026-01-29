@@ -1,0 +1,177 @@
+# Streaming Responses
+
+Implement real-time streaming for better user experience.
+
+## Why Streaming?
+
+- **Better UX** - Users see responses as they're generated
+- **Lower latency** - First token arrives quickly
+- **Progress feedback** - Users know the agent is working
+
+## Quick Start
+
+```python
+from isa_agent_sdk import Agent
+
+agent = Agent(name="streamer", model="claude-sonnet-4-20250514")
+
+async for chunk in agent.stream("Explain quantum computing"):
+    print(chunk.content, end="", flush=True)
+```
+
+## Implementation
+
+import { Tabs } from 'nextra/components'
+
+<Tabs items={['Python', 'JavaScript', 'FastAPI']}>
+  <Tabs.Tab>
+```python
+from isa_agent_sdk import Agent
+
+agent = Agent(
+    name="streaming-agent",
+    model="claude-sonnet-4-20250514"
+)
+
+async def stream_response(prompt: str):
+    full_response = ""
+
+    async for chunk in agent.stream(prompt):
+        # Each chunk contains partial content
+        print(chunk.content, end="", flush=True)
+        full_response += chunk.content
+
+        # Check for tool calls
+        if chunk.tool_call:
+            print(f"\n[Using tool: {chunk.tool_call.name}]")
+
+    print()  # Final newline
+    return full_response
+
+# Usage
+response = await stream_response("Write a poem about AI")
+```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```javascript
+import { Agent } from 'isa-agent-sdk';
+
+const agent = new Agent({
+    name: "streaming-agent",
+    model: "claude-sonnet-4-20250514"
+});
+
+async function streamResponse(prompt) {
+    let fullResponse = "";
+
+    for await (const chunk of agent.stream(prompt)) {
+        process.stdout.write(chunk.content);
+        fullResponse += chunk.content;
+    }
+
+    console.log(); // Final newline
+    return fullResponse;
+}
+
+await streamResponse("Explain machine learning");
+```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```python
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+from isa_agent_sdk import Agent
+
+app = FastAPI()
+agent = Agent(name="api-agent", model="claude-sonnet-4-20250514")
+
+@app.post("/chat/stream")
+async def chat_stream(message: str):
+    async def generate():
+        async for chunk in agent.stream(message):
+            yield f"data: {chunk.content}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream"
+    )
+```
+  </Tabs.Tab>
+</Tabs>
+
+## Server-Sent Events (SSE)
+
+For web applications:
+
+```python
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+from isa_agent_sdk import Agent
+import json
+
+app = FastAPI()
+agent = Agent(name="sse-agent", model="claude-sonnet-4-20250514")
+
+@app.post("/api/chat")
+async def chat(request: dict):
+    async def event_stream():
+        async for chunk in agent.stream(request["message"]):
+            event = {
+                "type": "content",
+                "content": chunk.content
+            }
+            yield f"data: {json.dumps(event)}\n\n"
+
+            if chunk.tool_call:
+                tool_event = {
+                    "type": "tool_call",
+                    "tool": chunk.tool_call.name,
+                    "status": "executing"
+                }
+                yield f"data: {json.dumps(tool_event)}\n\n"
+
+        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache"}
+    )
+```
+
+## Frontend Integration
+
+```javascript
+// React component with streaming
+function ChatMessage({ prompt }) {
+    const [content, setContent] = useState("");
+    const [isStreaming, setIsStreaming] = useState(true);
+
+    useEffect(() => {
+        const eventSource = new EventSource(`/api/chat?prompt=${prompt}`);
+
+        eventSource.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === "content") {
+                setContent(prev => prev + data.content);
+            } else if (data.type === "done") {
+                setIsStreaming(false);
+                eventSource.close();
+            }
+        };
+
+        return () => eventSource.close();
+    }, [prompt]);
+
+    return (
+        <div>
+            {content}
+            {isStreaming && <span className="cursor">▋</span>}
+        </div>
+    );
+}
+```
+
+<FeedbackWidget />

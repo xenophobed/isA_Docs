@@ -1,0 +1,79 @@
+# Quickstarts
+
+Ready-to-deploy templates for common use cases.
+
+<FeatureGrid>
+  <FeatureCard
+    title="Customer Support Bot"
+    description="AI support agent with knowledge base and ticket integration"
+    href="/quickstarts/customer-support"
+    icon="rocket"
+  />
+  <FeatureCard
+    title="Document Q&A"
+    description="Answer questions from PDFs and documents"
+    href="/quickstarts/document-qa"
+    icon="book"
+  />
+  <FeatureCard
+    title="Slack Bot"
+    description="AI assistant for your Slack workspace"
+    href="/quickstarts/slack-bot"
+    icon="globe"
+  />
+  <FeatureCard
+    title="Discord Bot"
+    description="AI-powered Discord bot for communities"
+    href="/quickstarts/discord-bot"
+    icon="globe"
+  />
+  <FeatureCard
+    title="API Backend"
+    description="FastAPI backend for AI applications"
+    href="/quickstarts/api-backend"
+    icon="cloud"
+  />
+</FeatureGrid>
+
+## How to Use
+
+Each quickstart includes:
+
+1. **Clone the template** from GitHub
+2. **Configure** your API keys and settings
+3. **Deploy** with one command
+
+```bash
+# Clone a quickstart
+git clone https://github.com/isA-platform/quickstart-customer-support
+
+# Install dependencies
+cd quickstart-customer-support
+pip install -r requirements.txt
+
+# Configure
+cp .env.example .env
+# Edit .env with your API keys
+
+# Run locally
+python main.py
+
+# Deploy to production
+isa deploy
+```
+
+## All Quickstarts
+
+| Quickstart | Description | Stack |
+|------------|-------------|-------|
+| [Customer Support](/quickstarts/customer-support) | Support bot with KB | Python, FastAPI, Redis |
+| [Document Q&A](/quickstarts/document-qa) | RAG-powered Q&A | Python, Qdrant |
+| [Slack Bot](/quickstarts/slack-bot) | Slack integration | Python, Slack SDK |
+| [Discord Bot](/quickstarts/discord-bot) | Discord integration | Python, discord.py |
+| [API Backend](/quickstarts/api-backend) | REST API for AI | Python, FastAPI |
+
+## Contributing
+
+Have a quickstart idea? [Open an issue](https://github.com/isA-platform/quickstarts/issues) or submit a PR.
+
+<FeedbackWidget />

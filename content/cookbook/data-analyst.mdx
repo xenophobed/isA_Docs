@@ -1,0 +1,107 @@
+# Data Analyst Agent
+
+Build an AI agent that analyzes data and creates visualizations.
+
+## What We're Building
+
+A data analyst agent that:
+- Loads and explores datasets
+- Performs statistical analysis
+- Creates charts and visualizations
+- Generates insights and reports
+
+## Quick Start
+
+```python
+from isa_agent_sdk import Agent
+
+agent = Agent(
+    name="data-analyst",
+    model="claude-sonnet-4-20250514",
+    tools=["code_interpreter", "file_read", "database_query"],
+    system_prompt="You are a data scientist. Analyze data and provide insights."
+)
+
+response = await agent.run("Analyze sales_data.csv and find the top performing products")
+```
+
+## Implementation
+
+```python
+from isa_agent_sdk import Agent
+from isa_agent_sdk.tools import CodeInterpreter
+
+# Configure with data science libraries
+interpreter = CodeInterpreter(
+    allowed_modules=[
+        "pandas", "numpy", "matplotlib", "seaborn",
+        "scipy", "sklearn"
+    ]
+)
+
+agent = Agent(
+    name="analyst",
+    model="claude-sonnet-4-20250514",
+    tools=[interpreter, "file_read", "database_query"],
+    system_prompt="""You are an expert data analyst.
+
+    When analyzing data:
+    1. First explore the data structure
+    2. Check for missing values and data quality
+    3. Perform relevant statistical analysis
+    4. Create visualizations to illustrate findings
+    5. Summarize insights in plain language
+    """
+)
+
+# Analyze a dataset
+response = await agent.run("""
+Load the file 'sales_2024.csv' and:
+1. Show summary statistics
+2. Find trends over time
+3. Identify top customers
+4. Create a visualization of monthly revenue
+""")
+```
+
+## Database Queries
+
+```python
+from isa_agent_sdk import Agent
+from isa_agent_sdk.tools import DatabaseQuery
+
+# Configure database connection
+db_tool = DatabaseQuery(
+    connection_string="postgresql://user:pass@localhost/analytics",
+    read_only=True  # Safety: prevent write operations
+)
+
+agent = Agent(
+    name="sql-analyst",
+    tools=[db_tool, "code_interpreter"],
+    system_prompt="You can query the database and analyze results with Python."
+)
+
+response = await agent.run("What were our top 10 products by revenue last quarter?")
+```
+
+## Visualization Output
+
+The agent can create and save visualizations:
+
+```python
+response = await agent.run("""
+Create a dashboard with:
+1. Revenue trend line chart
+2. Product category pie chart
+3. Customer segment bar chart
+
+Save to 'dashboard.png'
+""")
+
+# Access generated files
+for file in response.files:
+    print(f"Generated: {file.path}")
+```
+
+<FeedbackWidget />

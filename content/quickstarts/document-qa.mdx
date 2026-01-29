@@ -1,0 +1,56 @@
+# Document Q&A
+
+Build a system that answers questions from your documents.
+
+## Overview
+
+Upload PDFs, Word docs, and text files, then ask questions in natural language.
+
+**Time to deploy: ~10 minutes**
+
+## Quick Deploy
+
+```bash
+git clone https://github.com/isA-platform/quickstart-document-qa
+cd quickstart-document-qa
+pip install -r requirements.txt
+cp .env.example .env
+python main.py
+```
+
+## Features
+
+- PDF, DOCX, TXT, MD support
+- Semantic search with citations
+- Conversation memory
+- File upload API
+
+## Implementation
+
+```python
+from isa_agent_sdk import Agent
+from isa_agent_sdk.rag import DocumentStore
+
+store = DocumentStore(collection="documents")
+
+agent = Agent(
+    name="doc-qa",
+    model="claude-sonnet-4-20250514",
+    tools=[store.as_tool()],
+    system_prompt="Answer questions based on the uploaded documents. Always cite your sources."
+)
+
+# Upload endpoint
+@app.post("/upload")
+async def upload(file: UploadFile):
+    await store.ingest_file(file)
+    return {"status": "indexed"}
+
+# Query endpoint
+@app.post("/query")
+async def query(question: str):
+    response = await agent.run(question)
+    return {"answer": response.content}
+```
+
+<FeedbackWidget />

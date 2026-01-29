@@ -1,0 +1,62 @@
+# Discord Bot
+
+Build an AI-powered Discord bot for your community.
+
+## Overview
+
+A Discord bot that responds to commands and conversations with AI.
+
+**Time to deploy: ~15 minutes**
+
+## Quick Deploy
+
+```bash
+git clone https://github.com/isA-platform/quickstart-discord-bot
+cd quickstart-discord-bot
+pip install -r requirements.txt
+cp .env.example .env
+# Add your Discord token to .env
+python main.py
+```
+
+## Discord Setup
+
+1. Create application at [discord.com/developers](https://discord.com/developers)
+2. Create a bot and copy the token
+3. Enable Message Content Intent
+4. Invite bot to your server
+
+## Implementation
+
+```python
+import discord
+from discord.ext import commands
+from isa_agent_sdk import Agent
+
+bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
+
+agent = Agent(
+    name="discord-bot",
+    model="claude-sonnet-4-20250514",
+    tools=["web_search"],
+    memory={"type": "session"}
+)
+
+@bot.command()
+async def ask(ctx, *, question):
+    """Ask the AI a question."""
+    async with ctx.typing():
+        response = await agent.run(question)
+        await ctx.send(response.content)
+
+@bot.event
+async def on_message(message):
+    if bot.user.mentioned_in(message):
+        response = await agent.run(message.content)
+        await message.reply(response.content)
+    await bot.process_commands(message)
+
+bot.run(DISCORD_TOKEN)
+```
+
+<FeedbackWidget />

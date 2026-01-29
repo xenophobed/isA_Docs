@@ -1,0 +1,167 @@
+# Multi-Agent System
+
+Build a system of specialized agents that work together.
+
+## What We're Building
+
+A multi-agent system with:
+- Specialized agents for different tasks
+- Orchestration layer for coordination
+- Message passing between agents
+- Parallel and sequential execution
+
+## Architecture
+
+```
+                    ┌─────────────────┐
+                    │   Orchestrator  │
+                    └────────┬────────┘
+                             │
+         ┌───────────────────┼───────────────────┐
+         │                   │                   │
+         ▼                   ▼                   ▼
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│  Research Agent │ │   Code Agent    │ │  Review Agent   │
+│  (web_search)   │ │ (code_interp)   │ │    (analyze)    │
+└─────────────────┘ └─────────────────┘ └─────────────────┘
+```
+
+## Quick Start
+
+```python
+from isa_agent_sdk import Agent, Orchestrator
+
+# Create specialized agents
+researcher = Agent(
+    name="researcher",
+    tools=["web_search"],
+    system_prompt="Research topics and gather information."
+)
+
+coder = Agent(
+    name="coder",
+    tools=["code_interpreter"],
+    system_prompt="Write and execute code."
+)
+
+reviewer = Agent(
+    name="reviewer",
+    system_prompt="Review work and provide feedback."
+)
+
+# Orchestrate them
+orchestrator = Orchestrator(
+    agents=[researcher, coder, reviewer],
+    strategy="sequential"
+)
+
+result = await orchestrator.run(
+    "Research best practices for API design, create an example, and review it"
+)
+```
+
+## Implementation
+
+```python
+from isa_agent_sdk import Agent, Orchestrator, Message
+
+class MultiAgentSystem:
+    def __init__(self):
+        # Research agent - gathers information
+        self.researcher = Agent(
+            name="researcher",
+            model="claude-sonnet-4-20250514",
+            tools=["web_search", "file_read"],
+            system_prompt="""You are a research specialist.
+            Gather comprehensive information on topics.
+            Cite your sources."""
+        )
+
+        # Coder agent - implements solutions
+        self.coder = Agent(
+            name="coder",
+            model="claude-sonnet-4-20250514",
+            tools=["code_interpreter", "file_write"],
+            system_prompt="""You are an expert programmer.
+            Implement solutions based on requirements.
+            Write clean, tested code."""
+        )
+
+        # Reviewer agent - quality control
+        self.reviewer = Agent(
+            name="reviewer",
+            model="claude-sonnet-4-20250514",
+            system_prompt="""You are a senior engineer.
+            Review code and research for quality.
+            Provide constructive feedback."""
+        )
+
+        # Orchestrator
+        self.orchestrator = Orchestrator(
+            agents=[self.researcher, self.coder, self.reviewer]
+        )
+
+    async def solve(self, task: str):
+        # Step 1: Research
+        research = await self.researcher.run(f"Research: {task}")
+
+        # Step 2: Implement (with research context)
+        implementation = await self.coder.run(
+            f"Based on this research:\n{research.content}\n\nImplement: {task}"
+        )
+
+        # Step 3: Review
+        review = await self.reviewer.run(
+            f"Review this implementation:\n{implementation.content}"
+        )
+
+        return {
+            "research": research.content,
+            "implementation": implementation.content,
+            "review": review.content
+        }
+
+# Usage
+system = MultiAgentSystem()
+result = await system.solve("Build a rate limiter for an API")
+```
+
+## Parallel Execution
+
+Run agents in parallel when tasks are independent:
+
+```python
+from isa_agent_sdk import Orchestrator
+
+orchestrator = Orchestrator(
+    agents=[agent1, agent2, agent3],
+    strategy="parallel"  # Run all agents simultaneously
+)
+
+# All agents process the same input in parallel
+results = await orchestrator.run("Analyze this from different perspectives")
+```
+
+## Agent Communication
+
+Agents can pass messages to each other:
+
+```python
+from isa_agent_sdk import Agent, MessageBus
+
+bus = MessageBus()
+
+agent1 = Agent(name="analyzer", message_bus=bus)
+agent2 = Agent(name="reporter", message_bus=bus)
+
+# Agent 1 publishes findings
+await agent1.publish("findings", {"data": analysis_result})
+
+# Agent 2 subscribes and reacts
+@agent2.subscribe("findings")
+async def on_findings(data):
+    report = await agent2.run(f"Create report from: {data}")
+    return report
+```
+
+<FeedbackWidget />

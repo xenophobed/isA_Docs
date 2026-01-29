@@ -1,0 +1,56 @@
+# Slack Bot
+
+Create an AI assistant for your Slack workspace.
+
+## Overview
+
+A Slack bot that responds to mentions and direct messages with AI-powered answers.
+
+**Time to deploy: ~15 minutes**
+
+## Quick Deploy
+
+```bash
+git clone https://github.com/isA-platform/quickstart-slack-bot
+cd quickstart-slack-bot
+pip install -r requirements.txt
+cp .env.example .env
+# Add your Slack tokens to .env
+python main.py
+```
+
+## Slack Setup
+
+1. Create a Slack App at [api.slack.com](https://api.slack.com/apps)
+2. Enable Socket Mode
+3. Add OAuth scopes: `chat:write`, `app_mentions:read`, `im:history`
+4. Install to workspace and copy tokens
+
+## Implementation
+
+```python
+from slack_bolt.async_app import AsyncApp
+from isa_agent_sdk import Agent
+
+app = AsyncApp(token=SLACK_BOT_TOKEN)
+
+agent = Agent(
+    name="slack-bot",
+    model="claude-sonnet-4-20250514",
+    tools=["web_search", "calculator"],
+    memory={"type": "session"}
+)
+
+@app.event("app_mention")
+async def handle_mention(event, say):
+    response = await agent.run(event["text"])
+    await say(response.content)
+
+@app.event("message")
+async def handle_dm(event, say):
+    if event.get("channel_type") == "im":
+        response = await agent.run(event["text"])
+        await say(response.content)
+```
+
+<FeedbackWidget />

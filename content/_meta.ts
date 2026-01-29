@@ -15,6 +15,12 @@ export default {
   os: 'OS Services',
   '----': {
     type: 'separator',
+    title: 'Learn'
+  },
+  cookbook: 'Cookbook',
+  quickstarts: 'Quickstarts',
+  '-----': {
+    type: 'separator',
     title: 'Resources'
   },
   agents: 'Pre-built Agents',

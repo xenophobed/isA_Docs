@@ -1,0 +1,288 @@
+# Customer Support Bot
+
+Build a production-ready AI support agent with knowledge base integration.
+
+<StatusBadge />
+
+## Overview
+
+This quickstart creates:
+- AI support agent with your product knowledge
+- Ticket creation and escalation
+- Conversation memory
+- Analytics dashboard
+
+**Time to deploy: ~15 minutes**
+
+## Prerequisites
+
+- Python 3.10+
+- isA API key
+- Redis (for memory)
+
+## Quick Deploy
+
+```bash
+# Clone the template
+git clone https://github.com/isA-platform/quickstart-customer-support
+cd quickstart-customer-support
+
+# Install
+pip install -r requirements.txt
+
+# Configure
+cp .env.example .env
+# Add your ISA_API_KEY to .env
+
+# Run
+python main.py
+```
+
+## Project Structure
+
+```
+quickstart-customer-support/
+├── main.py              # FastAPI application
+├── agent.py             # Support agent definition
+├── knowledge/           # Knowledge base documents
+│   ├── faq.md
+│   └── product-guide.md
+├── routes/
+│   ├── chat.py          # Chat endpoints
+│   └── webhooks.py      # Ticket webhooks
+├── .env.example
+└── requirements.txt
+```
+
+## Core Implementation
+
+### Support Agent
+
+```python
+# agent.py
+from isa_agent_sdk import Agent
+from isa_agent_sdk.rag import DocumentStore
+
+# Initialize knowledge base
+knowledge_base = DocumentStore(
+    collection="support-kb",
+    embedding_model="text-embedding-3-small"
+)
+
+# Create the support agent
+support_agent = Agent(
+    name="support-bot",
+    model="claude-sonnet-4-20250514",
+    tools=[
+        knowledge_base.as_tool(),
+        "create_ticket",
+        "escalate_to_human"
+    ],
+    memory={
+        "type": "persistent",
+        "store": "redis",
+        "ttl": 86400  # 24 hours
+    },
+    system_prompt="""You are a helpful customer support agent for [Company Name].
+
+    Guidelines:
+    1. Always search the knowledge base first
+    2. Be friendly, empathetic, and professional
+    3. If you can't resolve an issue, offer to create a ticket
+    4. For urgent issues, escalate to human support
+
+    Available actions:
+    - Search knowledge base for answers
+    - Create support ticket
+    - Escalate to human agent
+    """
+)
+```
+
+### API Endpoints
+
+```python
+# main.py
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+from agent import support_agent
+from pydantic import BaseModel
+
+app = FastAPI(title="Support Bot API")
+
+class ChatRequest(BaseModel):
+    message: str
+    conversation_id: str
+    user_id: str
+
+@app.post("/chat")
+async def chat(request: ChatRequest):
+    """Send a message and get a response."""
+    response = await support_agent.run(
+        request.message,
+        context={"user_id": request.user_id},
+        conversation_id=request.conversation_id
+    )
+    return {"response": response.content}
+
+@app.post("/chat/stream")
+async def chat_stream(request: ChatRequest):
+    """Stream the response for real-time display."""
+    async def generate():
+        async for chunk in support_agent.stream(
+            request.message,
+            context={"user_id": request.user_id},
+            conversation_id=request.conversation_id
+        ):
+            yield f"data: {chunk.content}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream"
+    )
+```
+
+### Custom Tools
+
+```python
+# tools.py
+from isa_agent_sdk import tool
+import httpx
+
+@tool
+async def create_ticket(
+    title: str,
+    description: str,
+    priority: str = "medium",
+    user_email: str = None
+) -> dict:
+    """Create a support ticket in the ticketing system.
+
+    Args:
+        title: Ticket title
+        description: Detailed description
+        priority: low, medium, high, urgent
+        user_email: Customer email
+
+    Returns:
+        Ticket information with ID
+    """
+    # Integration with your ticketing system (Zendesk, Freshdesk, etc.)
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://api.your-ticketing-system.com/tickets",
+            json={
+                "title": title,
+                "description": description,
+                "priority": priority,
+                "requester_email": user_email
+            },
+            headers={"Authorization": f"Bearer {TICKET_API_KEY}"}
+        )
+        return response.json()
+
+@tool
+async def escalate_to_human(
+    reason: str,
+    conversation_id: str,
+    urgency: str = "normal"
+) -> str:
+    """Escalate conversation to human support.
+
+    Args:
+        reason: Why escalation is needed
+        conversation_id: Current conversation ID
+        urgency: normal or urgent
+
+    Returns:
+        Confirmation message
+    """
+    # Notify human support team
+    await notify_support_team(conversation_id, reason, urgency)
+    return f"Escalated to human support. A team member will join shortly."
+```
+
+## Configuration
+
+### Environment Variables
+
+```env
+# .env
+ISA_API_KEY=your-api-key
+REDIS_URL=redis://localhost:6379
+TICKET_API_KEY=your-ticketing-api-key
+```
+
+### Knowledge Base Setup
+
+Add your documentation to `knowledge/`:
+
+```markdown
+<!-- knowledge/faq.md -->
+# Frequently Asked Questions
+
+## How do I reset my password?
+1. Go to Settings > Security
+2. Click "Reset Password"
+3. Check your email for the reset link
+
+## What payment methods do you accept?
+We accept Visa, Mastercard, American Express, and PayPal.
+```
+
+Ingest the knowledge base:
+
+```python
+# scripts/ingest_kb.py
+from agent import knowledge_base
+import asyncio
+
+async def main():
+    await knowledge_base.ingest("./knowledge/")
+    print("Knowledge base updated!")
+
+asyncio.run(main())
+```
+
+## Deployment
+
+### Docker
+
+```dockerfile
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+### Deploy with isA Cloud
+
+```bash
+isa deploy --env production
+```
+
+## Try It
+
+<DemoPlayground
+  endpoint="/chat"
+  method="POST"
+  defaultBody={`{
+  "message": "How do I reset my password?",
+  "conversation_id": "conv-123",
+  "user_id": "user-456"
+}`}
+  sampleResponse={`{
+  "response": "I can help you reset your password! Here's how:\\n\\n1. Go to Settings > Security\\n2. Click \\"Reset Password\\"\\n3. Check your email for the reset link\\n\\nThe link will be valid for 24 hours. Is there anything else I can help you with?"
+}`}
+/>
+
+## Next Steps
+
+- [Add more tools](/cookbook/tool-use) - Integrate with your systems
+- [Improve responses](/cookbook/rag-agent) - Enhance the knowledge base
+- [Analytics](/cloud/operations) - Monitor performance
+
+<FeedbackWidget />
