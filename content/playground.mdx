@@ -1,0 +1,123 @@
+# API Playground
+
+Test the isA API directly in your browser.
+
+## Agent Chat
+
+Try the agent API with different prompts and configurations.
+
+<DemoPlayground
+  endpoint="/v1/agent/chat"
+  method="POST"
+  defaultBody={`{
+  "model": "claude-sonnet-4-20250514",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hello! What can you help me with?"
+    }
+  ]
+}`}
+  sampleResponse={`{
+  "id": "msg_01XFDUDYJgAACzvnptvVoYEL",
+  "type": "message",
+  "role": "assistant",
+  "content": "Hello! I'm an AI assistant powered by the isA platform. I can help you with:\\n\\n- Answering questions and providing information\\n- Writing and reviewing code\\n- Analyzing data and documents\\n- Creative writing and brainstorming\\n- And much more!\\n\\nWhat would you like to explore today?",
+  "model": "claude-sonnet-4-20250514",
+  "usage": {
+    "input_tokens": 12,
+    "output_tokens": 67
+  }
+}`}
+/>
+
+## Agent with Tools
+
+Test an agent that can use tools like web search and code execution.
+
+<DemoPlayground
+  endpoint="/v1/agent/run"
+  method="POST"
+  defaultBody={`{
+  "agent": "default",
+  "message": "What's the weather like today?",
+  "tools": ["web_search", "calculator"]
+}`}
+  sampleResponse={`{
+  "content": "I don't have access to real-time weather data in this demo, but with the web_search tool enabled, I would search for current weather conditions in your location.\\n\\nTo get actual weather data, you'll need to:\\n1. Set up your API key\\n2. Enable the weather or web_search tool\\n3. Specify your location",
+  "tool_calls": [],
+  "usage": {
+    "input_tokens": 24,
+    "output_tokens": 58
+  }
+}`}
+/>
+
+## RAG Query
+
+Test retrieval-augmented generation with your documents.
+
+<DemoPlayground
+  endpoint="/v1/rag/query"
+  method="POST"
+  defaultBody={`{
+  "collection": "my-docs",
+  "query": "How do I authenticate with the API?",
+  "top_k": 5
+}`}
+  sampleResponse={`{
+  "answer": "To authenticate with the isA API, include your API key in the Authorization header:\\n\\nAuthorization: Bearer YOUR_API_KEY\\n\\nYou can get your API key from the isA Dashboard.",
+  "sources": [
+    {
+      "document": "authentication.md",
+      "chunk": "API Authentication requires...",
+      "score": 0.94
+    }
+  ],
+  "usage": {
+    "input_tokens": 156,
+    "output_tokens": 42
+  }
+}`}
+/>
+
+## Code Execution
+
+Test the code interpreter tool.
+
+<DemoPlayground
+  endpoint="/v1/tools/code_interpreter"
+  method="POST"
+  defaultBody={`{
+  "code": "import math\\n\\n# Calculate fibonacci sequence\\ndef fib(n):\\n    return [int((((1+math.sqrt(5))/2)**i - ((1-math.sqrt(5))/2)**i) / math.sqrt(5)) for i in range(n)]\\n\\nprint(fib(10))",
+  "language": "python"
+}`}
+  sampleResponse={`{
+  "success": true,
+  "output": "[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]",
+  "execution_time_ms": 45,
+  "memory_used_mb": 12.4
+}`}
+/>
+
+## API Reference
+
+For full API documentation, see:
+
+- [Agent SDK API](/agent-sdk/api-reference)
+- [Model Service API](/model/api-reference)
+- [MCP Tools API](/mcp/tools)
+
+## Get Your API Key
+
+To use the real API (not demo mode):
+
+1. Sign up at [dashboard.isa.io](https://dashboard.isa.io)
+2. Create a new API key
+3. Replace `YOUR_API_KEY` in your requests
+
+```bash
+export ISA_API_KEY="your-api-key-here"
+```
+
+<FeedbackWidget />

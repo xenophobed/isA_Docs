@@ -1,6 +1,7 @@
 export default {
   index: 'Home',
   'getting-started': 'Getting Started',
+  playground: 'Playground',
   architecture: 'Architecture',
   '---': {
     type: 'separator',

@@ -3,6 +3,7 @@ import { Head } from 'nextra/components'
 import { getPageMap } from 'nextra/page-map'
 import 'nextra-theme-docs/style.css'
 import './globals.css'
+import { AISearch } from '../components/AISearch'
 
 export const metadata = {
   title: {
@@ -89,7 +90,9 @@ export default async function RootLayout({
             <Navbar
               logo={<Logo />}
               projectLink="https://github.com/isA-platform"
-            />
+            >
+              <AISearch />
+            </Navbar>
           }
           footer={<Footer><FooterContent /></Footer>}
           pageMap={pageMap}
