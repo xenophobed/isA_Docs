@@ -27,10 +27,8 @@ response = await agent.run("Write a function to find prime numbers up to n")
 
 ## Implementation
 
-import { Tabs } from 'nextra/components'
+### Python
 
-<Tabs items={['Python', 'JavaScript']}>
-  <Tabs.Tab>
 ```python
 from isa_agent_sdk import Agent
 
@@ -45,19 +43,7 @@ class CodeAssistant:
                 "file_read",         # Read files
                 "file_write",        # Write files
             ],
-            system_prompt="""You are an expert software engineer.
-
-            When writing code:
-            - Write clean, well-documented code
-            - Follow best practices and conventions
-            - Include error handling
-            - Add type hints (Python) or types (TypeScript)
-
-            When debugging:
-            - Analyze the error carefully
-            - Explain what went wrong
-            - Provide a fix with explanation
-            """
+            system_prompt="You are an expert software engineer. Write clean code."
         )
 
     async def write_code(self, task: str) -> str:
@@ -65,41 +51,22 @@ class CodeAssistant:
         return response.content
 
     async def debug_code(self, code: str, error: str) -> str:
-        prompt = f"""Debug this code:
-
-```
-{code}
-```
-
-Error: {error}
-"""
+        prompt = f"Debug this code:\n{code}\n\nError: {error}"
         response = await self.agent.run(prompt)
         return response.content
 
     async def run_code(self, code: str) -> str:
-        prompt = f"Execute this code and show the output:\n```python\n{code}\n```"
+        prompt = f"Execute this code and show the output:\n{code}"
         response = await self.agent.run(prompt)
         return response.content
 
 # Usage
 assistant = CodeAssistant()
-
-# Write code
-code = await assistant.write_code("Sort a list of dictionaries by a specific key")
-
-# Run code
-result = await assistant.run_code("""
-def fibonacci(n):
-    a, b = 0, 1
-    for _ in range(n):
-        yield a
-        a, b = b, a + b
-
-print(list(fibonacci(10)))
-""")
+code = await assistant.write_code("Sort a list of dictionaries by key")
 ```
-  </Tabs.Tab>
-  <Tabs.Tab>
+
+### JavaScript
+
 ```javascript
 import { Agent } from 'isa-agent-sdk';
 
@@ -109,7 +76,7 @@ class CodeAssistant {
             name: "coder",
             model: "claude-sonnet-4-20250514",
             tools: ["code_interpreter", "shell", "file_read", "file_write"],
-            systemPrompt: `You are an expert software engineer...`
+            systemPrompt: "You are an expert software engineer."
         });
     }
 
@@ -120,7 +87,7 @@ class CodeAssistant {
 
     async debugCode(code, error) {
         const response = await this.agent.run(
-            `Debug this code:\n\`\`\`\n${code}\n\`\`\`\n\nError: ${error}`
+            `Debug this code:\n${code}\n\nError: ${error}`
         );
         return response.content;
     }
@@ -129,8 +96,6 @@ class CodeAssistant {
 const assistant = new CodeAssistant();
 const code = await assistant.writeCode("Implement a binary search tree");
 ```
-  </Tabs.Tab>
-</Tabs>
 
 ## Safe Code Execution
 
@@ -166,11 +131,11 @@ agent = Agent(
   "message": "Write a Python function to check if a string is a palindrome"
 }`}
   sampleResponse={`{
-  "content": "Here's a Python function to check if a string is a palindrome:\\n\\n\`\`\`python\\ndef is_palindrome(s: str) -> bool:\\n    # Remove spaces and convert to lowercase\\n    cleaned = s.lower().replace(' ', '')\\n    return cleaned == cleaned[::-1]\\n\\n# Examples\\nprint(is_palindrome('racecar'))  # True\\nprint(is_palindrome('hello'))    # False\\n\`\`\`",
+  "content": "Here's a Python function to check if a string is a palindrome:\\n\\ndef is_palindrome(s: str) -> bool:\\n    cleaned = s.lower().replace(' ', '')\\n    return cleaned == cleaned[::-1]\\n\\nprint(is_palindrome('racecar'))  # True",
   "tool_calls": [
     {
       "tool": "code_interpreter",
-      "result": "True\\nFalse"
+      "result": "True"
     }
   ]
 }`}
