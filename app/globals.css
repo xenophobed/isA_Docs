@@ -1,1 +1,46 @@
 @import "tailwindcss";
+
+/* isA Platform Custom Theme */
+:root {
+  --nextra-primary-hue: 210deg;
+  --nextra-primary-saturation: 100%;
+}
+
+.dark {
+  --nextra-primary-hue: 210deg;
+  --nextra-primary-saturation: 100%;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+/* Code block improvements */
+pre {
+  font-size: 0.875rem !important;
+}
+
+/* Table improvements */
+table {
+  font-size: 0.875rem;
+}
+
+/* ASCII diagrams in code blocks */
+pre code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}

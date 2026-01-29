@@ -5,9 +5,73 @@ import 'nextra-theme-docs/style.css'
 import './globals.css'
 
 export const metadata = {
-  title: 'isA Docs',
-  description: 'Build and deploy intelligent AI agents',
+  title: {
+    default: 'isA Platform Documentation',
+    template: '%s | isA Docs'
+  },
+  description: 'Build, deploy, and scale intelligent AI agents with the complete isA platform. Agent SDK, 50+ MCP tools, Model gateway, and production-ready infrastructure.',
+  keywords: ['AI agents', 'LLM', 'Agent SDK', 'MCP', 'Kubernetes', 'AI platform'],
+  authors: [{ name: 'isA Platform' }],
+  openGraph: {
+    title: 'isA Platform Documentation',
+    description: 'Build, deploy, and scale intelligent AI agents',
+    type: 'website',
+  },
 }
+
+const Logo = () => (
+  <span className="flex items-center gap-2 font-bold">
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      className="text-current"
+    >
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+      <path d="M8 12h8M12 8v8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+    <span>isA</span>
+  </span>
+)
+
+const FooterContent = () => (
+  <div className="w-full">
+    <div className="flex flex-col md:flex-row justify-between items-center gap-4 py-4">
+      <div className="flex items-center gap-4">
+        <span className="text-sm text-gray-600 dark:text-gray-400">
+          © {new Date().getFullYear()} isA Platform. Open Source.
+        </span>
+      </div>
+      <div className="flex items-center gap-6">
+        <a
+          href="https://github.com/isA-platform"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+        >
+          GitHub
+        </a>
+        <a
+          href="https://discord.gg/isa"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+        >
+          Discord
+        </a>
+        <a
+          href="https://twitter.com/isA_platform"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+        >
+          Twitter
+        </a>
+      </div>
+    </div>
+  </div>
+)
 
 export default async function RootLayout({
   children,
@@ -18,18 +82,19 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <Head faviconGlyph="📦" />
+      <Head faviconGlyph="+" />
       <body>
         <Layout
           navbar={
             <Navbar
-              logo={<b>isA Docs</b>}
-              projectLink="https://github.com/isA-org"
+              logo={<Logo />}
+              projectLink="https://github.com/isA-platform"
             />
           }
-          footer={<Footer>© {new Date().getFullYear()} isA Platform</Footer>}
+          footer={<Footer><FooterContent /></Footer>}
           pageMap={pageMap}
-          editLink="Edit on GitHub"
+          docsRepositoryBase="https://github.com/isA-platform/isA_Docs/tree/main/content"
+          editLink="Edit this page on GitHub"
         >
           {children}
         </Layout>

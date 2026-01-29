@@ -1,0 +1,129 @@
+# Changelog
+
+All notable changes to the isA platform.
+
+## [Unreleased]
+
+### Added
+- isA Cloud documentation with gRPC services, APISIX, Consul
+- User Services documentation for 31 microservices
+- Data platform documentation with RAG patterns
+- Unified documentation site with Nextra
+
+---
+
+## [0.5.0] - 2025-01-29
+
+### Added
+
+#### Agent SDK
+- New `Workflow` class for multi-step agent tasks
+- Support for parallel tool execution
+- Memory persistence with Redis and PostgreSQL backends
+- Streaming responses with `async for` syntax
+
+#### MCP
+- 15 new tools: `browser_*`, `database_*`, `api_*`
+- Tool composition for complex operations
+- Automatic retry with exponential backoff
+
+#### Model Service
+- Support for Claude claude-sonnet-4-20250514 and Opus models
+- Local model support via Ollama integration
+- Response caching with configurable TTL
+- Cost tracking and budgets
+
+#### User Services
+- Cognitive memory service with 6 memory types
+- Enhanced payment processing with Stripe
+- Organization hierarchy and family sharing
+- IoT device management with OTA updates
+
+#### Cloud
+- ArgoCD GitOps deployment
+- Multi-environment support (dev/staging/production)
+- Automated CI/CD with GitHub Actions
+- Horizontal pod autoscaling
+
+### Changed
+- Improved error messages across all services
+- Better type hints in Python SDK
+- Faster startup time for agents
+
+### Fixed
+- Memory leak in long-running agents
+- Race condition in concurrent tool calls
+- Token refresh issues in auth service
+
+---
+
+## [0.4.0] - 2025-01-15
+
+### Added
+- MCP tool framework with 35 initial tools
+- Data lake with DuckDB integration
+- Vector search with Qdrant
+- Document processing pipeline
+
+### Changed
+- Migrated from REST to gRPC for internal services
+- Unified logging format across services
+
+### Fixed
+- Connection pooling issues in PostgreSQL client
+- Rate limiting accuracy improvements
+
+---
+
+## [0.3.0] - 2025-01-01
+
+### Added
+- Agent SDK initial release
+- Model service with OpenAI and Anthropic support
+- Basic authentication service
+- File storage with MinIO
+
+### Changed
+- Restructured repository for monorepo
+
+---
+
+## [0.2.0] - 2024-12-15
+
+### Added
+- Consul service discovery
+- APISIX API gateway
+- Redis caching layer
+- Health check endpoints
+
+---
+
+## [0.1.0] - 2024-12-01
+
+### Added
+- Initial platform architecture
+- Kubernetes deployment manifests
+- Basic CI/CD pipeline
+- Documentation site setup
+
+---
+
+## Versioning
+
+This project follows [Semantic Versioning](https://semver.org/):
+
+- **MAJOR**: Incompatible API changes
+- **MINOR**: New functionality, backwards compatible
+- **PATCH**: Bug fixes, backwards compatible
+
+## Release Schedule
+
+- **Patch releases**: As needed for bug fixes
+- **Minor releases**: Every 2-4 weeks
+- **Major releases**: As needed for breaking changes
+
+## Deprecation Policy
+
+- Deprecated features are marked in documentation
+- Minimum 2 minor versions before removal
+- Migration guides provided for breaking changes

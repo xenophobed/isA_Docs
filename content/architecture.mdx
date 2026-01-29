@@ -1,0 +1,246 @@
+# Architecture
+
+How the isA platform components work together.
+
+## Platform Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                                 APPLICATIONS                                     │
+│              Web Apps • Mobile Apps • CLI Tools • Integrations                   │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                        │
+                                        ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                               AGENT SDK (Python)                                 │
+│                                                                                  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐        │
+│  │    Agent     │  │   Workflow   │  │    Memory    │  │    Tools     │        │
+│  │   Runtime    │  │   Engine     │  │   Manager    │  │   Registry   │        │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘        │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                        │
+                    ┌───────────────────┼───────────────────┐
+                    ▼                   ▼                   ▼
+┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────────┐
+│     MCP SERVICE      │  │    MODEL SERVICE     │  │    USER SERVICES     │
+│                      │  │                      │  │                      │
+│  50+ Tools:          │  │  LLM Gateway:        │  │  31 Microservices:   │
+│  • Web Search        │  │  • Anthropic         │  │  • Authentication    │
+│  • File Operations   │  │  • OpenAI            │  │  • Payments          │
+│  • Code Execution    │  │  • Local (Ollama)    │  │  • Storage           │
+│  • Database          │  │  • Router            │  │  • Organizations     │
+│  • Browser           │  │  • Caching           │  │  • Devices (IoT)     │
+│  • APIs              │  │  • Rate Limiting     │  │  • Memory            │
+└──────────────────────┘  └──────────────────────┘  └──────────────────────┘
+                    │                   │                   │
+                    └───────────────────┼───────────────────┘
+                                        ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              DATA SERVICE                                        │
+│                                                                                  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐        │
+│  │  Data Lake   │  │ Data Fabric  │  │     RAG      │  │    File      │        │
+│  │   (DuckDB)   │  │  (Pipelines) │  │  (Vectors)   │  │  Processing  │        │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘        │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                        │
+                                        ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              isA CLOUD                                           │
+│                                                                                  │
+│  ┌────────────────────────────────────────────────────────────────────────┐    │
+│  │                        APISIX GATEWAY (Port 9080)                       │    │
+│  │            Rate Limiting • Auth • Routing • SSL • Metrics              │    │
+│  └────────────────────────────────────────────────────────────────────────┘    │
+│                                        │                                        │
+│  ┌────────────────────────────────────────────────────────────────────────┐    │
+│  │                    CONSUL SERVICE DISCOVERY (Port 8500)                 │    │
+│  │              Registration • Health Checks • DNS • KV Store             │    │
+│  └────────────────────────────────────────────────────────────────────────┘    │
+│                                        │                                        │
+│  ┌────────────────────────────────────────────────────────────────────────┐    │
+│  │                        gRPC SERVICES (50051-50070)                      │    │
+│  │   postgres • redis • neo4j • nats • mqtt • minio • qdrant • duckdb     │    │
+│  └────────────────────────────────────────────────────────────────────────┘    │
+│                                        │                                        │
+│  ┌────────────────────────────────────────────────────────────────────────┐    │
+│  │                          INFRASTRUCTURE                                 │    │
+│  │  PostgreSQL • Redis • Neo4j • NATS • MQTT • MinIO • Qdrant • DuckDB   │    │
+│  └────────────────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+## Component Details
+
+### Agent SDK
+
+The Python SDK is the primary interface for building agents:
+
+| Component | Purpose |
+|-----------|---------|
+| **Agent Runtime** | Executes agent logic, manages state |
+| **Workflow Engine** | Orchestrates multi-step tasks |
+| **Memory Manager** | Handles short and long-term memory |
+| **Tools Registry** | Discovers and invokes tools |
+
+[Agent SDK Documentation →](/agent-sdk)
+
+### MCP Service
+
+Model Context Protocol provides 50+ tools:
+
+| Category | Tools |
+|----------|-------|
+| **Search** | web_search, image_search, news_search |
+| **Files** | file_read, file_write, file_list |
+| **Code** | code_interpreter, shell, git |
+| **Data** | database_query, api_call, scrape |
+| **Browser** | browser_navigate, browser_click |
+
+[MCP Documentation →](/mcp)
+
+### Model Service
+
+Unified LLM gateway with intelligent routing:
+
+| Feature | Description |
+|---------|-------------|
+| **Multi-Provider** | Anthropic, OpenAI, Google, local |
+| **Routing** | Automatic model selection |
+| **Caching** | Response caching for cost savings |
+| **Rate Limiting** | Per-user and global limits |
+| **Fallback** | Automatic failover |
+
+[Model Documentation →](/model)
+
+### User Services
+
+31 microservices for common application needs:
+
+| Category | Services |
+|----------|----------|
+| **Auth** | auth, profile, rbac, social |
+| **Payments** | payment, subscription, billing, wallet |
+| **Storage** | storage, album, media, document |
+| **Social** | organization, invitation, membership |
+| **IoT** | device, ota, telemetry |
+| **AI** | memory (cognitive memory system) |
+
+[User Services Documentation →](/user)
+
+### Data Service
+
+Data processing and analytics:
+
+| Component | Technology |
+|-----------|------------|
+| **Data Lake** | DuckDB for analytics |
+| **Data Fabric** | Apache Spark pipelines |
+| **RAG** | Qdrant + pgvector |
+| **File Processing** | Multi-format extraction |
+
+[Data Documentation →](/data)
+
+### isA Cloud
+
+Production infrastructure:
+
+| Component | Technology | Port |
+|-----------|------------|------|
+| **Gateway** | Apache APISIX | 9080 |
+| **Discovery** | Consul | 8500 |
+| **Database** | PostgreSQL | 5432 |
+| **Cache** | Redis | 6379 |
+| **Graph** | Neo4j | 7687 |
+| **Messaging** | NATS | 4222 |
+| **IoT** | MQTT | 1883 |
+| **Storage** | MinIO | 9000 |
+| **Vectors** | Qdrant | 6333 |
+| **Analytics** | DuckDB | - |
+
+[Cloud Documentation →](/cloud)
+
+## Data Flow
+
+### Agent Request Flow
+
+```
+1. User sends request to Agent
+2. Agent SDK processes request
+3. Agent decides which tools to use
+4. Tools call backend services via MCP
+5. Model service generates responses
+6. Results aggregated and returned
+```
+
+### Authentication Flow
+
+```
+1. User authenticates via auth_service
+2. JWT token issued
+3. Token included in API requests
+4. APISIX validates token
+5. Request routed to service
+6. Response returned
+```
+
+### Event Flow
+
+```
+1. Service publishes event to NATS
+2. Interested services subscribe
+3. Events processed asynchronously
+4. State updated across services
+5. Notifications sent if needed
+```
+
+## Deployment Options
+
+### Local Development
+
+```bash
+# Using KIND (Kubernetes in Docker)
+cd deployments/kubernetes/local/scripts
+./kind-setup.sh
+./kind-deploy.sh
+```
+
+### Staging/Production
+
+```bash
+# GitOps with ArgoCD
+git push origin main  # Triggers deployment
+```
+
+| Environment | Cluster | Auto-Deploy |
+|-------------|---------|-------------|
+| Local | KIND | Manual |
+| Staging | EKS | Yes (main branch) |
+| Production | EKS/GKE | Manual approval |
+
+## Security
+
+### Authentication
+
+- JWT tokens for API access
+- OAuth2/OIDC for SSO
+- API keys for service-to-service
+
+### Authorization
+
+- RBAC with fine-grained permissions
+- Organization-level isolation
+- Resource-level access control
+
+### Data Protection
+
+- Encryption at rest (AES-256)
+- Encryption in transit (TLS 1.3)
+- Secrets in Vault/AWS Secrets Manager
+
+## Next Steps
+
+- [Getting Started](/getting-started) - Build your first agent
+- [Cloud Setup](/cloud/quickstart) - Deploy infrastructure
+- [Security Guide](/user/authentication) - Authentication details

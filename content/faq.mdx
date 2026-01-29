@@ -1,0 +1,245 @@
+# FAQ
+
+Frequently asked questions about the isA platform.
+
+## General
+
+### What is isA?
+
+isA is a complete platform for building, deploying, and scaling AI agents. It includes:
+
+- **Agent SDK** - Python library for building agents
+- **MCP** - 50+ pre-built tools for agents
+- **Model Service** - Unified LLM gateway
+- **User Services** - 31 microservices for auth, payments, storage
+- **Cloud** - Production-ready Kubernetes infrastructure
+
+### Is isA open source?
+
+Yes, isA is open source. You can find all repositories at [github.com/isA-platform](https://github.com/isA-platform).
+
+### What models does isA support?
+
+isA supports multiple LLM providers:
+
+| Provider | Models |
+|----------|--------|
+| Anthropic | Claude claude-sonnet-4-20250514, Claude Opus, Claude Haiku |
+| OpenAI | GPT-4o, GPT-4o-mini, GPT-4 Turbo |
+| Google | Gemini Pro, Gemini Ultra |
+| Local | Any Ollama-compatible model |
+
+### How much does isA cost?
+
+- **Self-hosted**: Free (you pay for infrastructure)
+- **Cloud hosted**: Usage-based pricing (coming soon)
+
+Model costs are passed through at provider rates.
+
+## Agent SDK
+
+### How do I install the SDK?
+
+```bash
+pip install isa-agent-sdk
+```
+
+### How do I create a simple agent?
+
+```python
+from isa_agent_sdk import Agent
+
+agent = Agent(
+    name="my-agent",
+    model="claude-sonnet-4-20250514",
+    tools=["web_search", "calculator"]
+)
+
+response = await agent.run("What is 2+2?")
+```
+
+### Can agents remember previous conversations?
+
+Yes, use the memory feature:
+
+```python
+agent = Agent(
+    name="my-agent",
+    memory={"type": "persistent", "store": "redis"}
+)
+```
+
+### How do I add custom tools?
+
+```python
+from isa_agent_sdk import tool
+
+@tool
+def my_custom_tool(query: str) -> str:
+    """Search my database."""
+    return database.search(query)
+
+agent = Agent(tools=[my_custom_tool])
+```
+
+### Can I use multiple models in one agent?
+
+Yes, use the router:
+
+```python
+agent = Agent(
+    model={
+        "router": "cost-optimized",
+        "models": ["claude-sonnet-4-20250514", "gpt-4o-mini"]
+    }
+)
+```
+
+## MCP Tools
+
+### What tools are available?
+
+Over 50 tools across categories:
+
+- **Search**: web_search, image_search, news_search
+- **Files**: file_read, file_write, file_list, file_delete
+- **Code**: code_interpreter, shell, git
+- **Browser**: browser_navigate, browser_click, browser_screenshot
+- **Database**: postgres_query, redis_get, neo4j_query
+- **APIs**: http_request, graphql_query
+
+See the [full tools list](/mcp/tools).
+
+### How do I use a tool directly?
+
+```python
+from isa_mcp import tools
+
+result = await tools.web_search("latest AI news")
+```
+
+### Can I create custom MCP tools?
+
+Yes, see the [tool development guide](/mcp/development).
+
+## Deployment
+
+### What are the system requirements?
+
+**Minimum (development)**:
+- 4 CPU cores
+- 8 GB RAM
+- 50 GB disk
+
+**Recommended (production)**:
+- 8+ CPU cores
+- 32+ GB RAM
+- 200+ GB SSD
+- Kubernetes cluster
+
+### How do I deploy locally?
+
+```bash
+cd deployments/kubernetes/local/scripts
+./kind-setup.sh
+./kind-deploy.sh
+```
+
+### How do I deploy to production?
+
+1. Set up a Kubernetes cluster (EKS, GKE, or self-managed)
+2. Install ArgoCD
+3. Connect your repository
+4. Push to `main` branch
+
+See the [deployment guide](/cloud/deployment).
+
+### Can I use my own infrastructure?
+
+Yes, isA is fully self-hostable. You can:
+
+- Use your own Kubernetes cluster
+- Bring your own databases
+- Use your own model API keys
+
+## Security
+
+### How is data encrypted?
+
+- **At rest**: AES-256 encryption
+- **In transit**: TLS 1.3
+- **Secrets**: Stored in Vault or AWS Secrets Manager
+
+### How does authentication work?
+
+isA uses JWT tokens for API authentication:
+
+1. User authenticates via `/auth/login`
+2. Receives JWT access token + refresh token
+3. Include token in `Authorization: Bearer <token>` header
+4. Token validated by APISIX gateway
+
+### Is there RBAC support?
+
+Yes, isA has fine-grained role-based access control:
+
+- Organizations with multiple roles
+- Resource-level permissions
+- API scope restrictions
+
+See [authentication docs](/user/authentication).
+
+### Is isA SOC 2 compliant?
+
+Self-hosted deployments inherit your compliance posture. Cloud-hosted (coming soon) will be SOC 2 Type II compliant.
+
+## Troubleshooting
+
+### Agent not responding?
+
+1. Check your API key is set: `echo $ISA_API_KEY`
+2. Verify model service is running
+3. Check logs: `kubectl logs -l app=model-service`
+
+### Tools not working?
+
+1. Verify tool is installed: `isa tools list`
+2. Check MCP service: `curl http://localhost:8301/health`
+3. Review tool permissions
+
+### Slow responses?
+
+1. Enable caching in model service
+2. Use streaming for long responses
+3. Consider a faster model (e.g., `gpt-4o-mini`)
+
+### Memory issues?
+
+1. Clear old memories: `agent.memory.clear()`
+2. Use memory limits: `memory={"max_items": 100}`
+3. Check Redis memory: `redis-cli INFO memory`
+
+## Getting Help
+
+### Where can I get support?
+
+- [GitHub Issues](https://github.com/isA-platform/issues) - Bug reports
+- [Discord](https://discord.gg/isa) - Community chat
+- [Documentation](/getting-started) - Guides and references
+
+### How do I report a bug?
+
+1. Search existing [issues](https://github.com/isA-platform/issues)
+2. Create a new issue with:
+   - isA version
+   - Steps to reproduce
+   - Expected vs actual behavior
+   - Logs if available
+
+### How do I request a feature?
+
+Open a [GitHub Discussion](https://github.com/isA-platform/discussions) with:
+
+- Use case description
+- Proposed solution
+- Alternatives considered

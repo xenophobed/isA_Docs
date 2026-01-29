@@ -1,0 +1,166 @@
+# Getting Started
+
+Get up and running with the isA platform in minutes.
+
+## Prerequisites
+
+- Python 3.10+
+- pip or uv package manager
+- (Optional) Docker for local infrastructure
+
+## Installation
+
+### 1. Install the Agent SDK
+
+```bash
+pip install isa-agent-sdk
+```
+
+Or with uv:
+
+```bash
+uv add isa-agent-sdk
+```
+
+### 2. Set Up Authentication
+
+Get your API key from the [isA Dashboard](https://dashboard.isa.io) and set it:
+
+```bash
+export ISA_API_KEY="your-api-key"
+```
+
+Or create a `.env` file:
+
+```env
+ISA_API_KEY=your-api-key
+```
+
+### 3. Verify Installation
+
+```python
+from isa_agent_sdk import query
+
+async for msg in query("Hello, isA!"):
+    print(msg.content, end="")
+```
+
+## Your First Agent
+
+### Simple Query
+
+The fastest way to get a response:
+
+```python
+from isa_agent_sdk import query
+
+async def main():
+    async for msg in query("What is machine learning?"):
+        print(msg.content, end="")
+
+import asyncio
+asyncio.run(main())
+```
+
+### Agent with Tools
+
+Create an agent with access to tools:
+
+```python
+from isa_agent_sdk import Agent
+
+agent = Agent(
+    name="research-assistant",
+    model="claude-sonnet-4-20250514",
+    tools=["web_search", "calculator", "code_interpreter"],
+    system_prompt="You are a helpful research assistant."
+)
+
+async def main():
+    response = await agent.run("Find the latest news about AI and summarize it")
+    print(response.content)
+
+import asyncio
+asyncio.run(main())
+```
+
+### Agent with Memory
+
+Add persistent memory to your agent:
+
+```python
+from isa_agent_sdk import Agent
+
+agent = Agent(
+    name="personal-assistant",
+    model="claude-sonnet-4-20250514",
+    memory={
+        "type": "persistent",
+        "store": "redis"  # or "postgres", "qdrant"
+    }
+)
+
+# The agent remembers previous conversations
+await agent.run("My name is Alice")
+await agent.run("What's my name?")  # "Your name is Alice"
+```
+
+## Choose Your Path
+
+### I want to build AI agents
+
+1. [Agent SDK Overview](/agent-sdk) - Learn the SDK basics
+2. [Tools & Capabilities](/agent-sdk/tools) - Available tools
+3. [Memory & State](/agent-sdk/memory) - Persistent memory
+4. [Workflows](/agent-sdk/workflows) - Multi-step automation
+
+### I want to add AI to my app
+
+1. [Model Service](/model) - LLM gateway API
+2. [MCP Tools](/mcp) - Pre-built integrations
+3. [User Services](/user) - Auth, payments, storage
+
+### I want to deploy to production
+
+1. [Cloud Infrastructure](/cloud) - Kubernetes setup
+2. [CI/CD Pipelines](/cloud/cicd) - Automated deployment
+3. [Monitoring](/cloud/operations) - Observability
+
+## Quick Reference
+
+### Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `ISA_API_KEY` | Your API key | Yes |
+| `ISA_ENV` | Environment (dev/staging/prod) | No |
+| `ISA_MODEL` | Default model | No |
+| `ISA_LOG_LEVEL` | Logging verbosity | No |
+
+### Available Models
+
+| Model | Provider | Best For |
+|-------|----------|----------|
+| `claude-sonnet-4-20250514` | Anthropic | General use, coding |
+| `claude-opus-4-20250514` | Anthropic | Complex reasoning |
+| `gpt-4o` | OpenAI | General use |
+| `gpt-4o-mini` | OpenAI | Fast, affordable |
+| `llama-3.1-70b` | Local | Privacy, offline |
+
+### Common Tools
+
+| Tool | Description |
+|------|-------------|
+| `web_search` | Search the web |
+| `calculator` | Math operations |
+| `code_interpreter` | Run Python code |
+| `file_read` | Read files |
+| `file_write` | Write files |
+| `shell` | Execute commands |
+
+## Next Steps
+
+- [Agent SDK Documentation](/agent-sdk) - Full SDK reference
+- [MCP Tools](/mcp/tools) - Browse 50+ tools
+- [Examples](/agent-sdk/examples) - Sample projects
+- [Architecture](/architecture) - Platform overview

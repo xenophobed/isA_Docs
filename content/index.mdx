@@ -1,35 +1,116 @@
 # isA Platform
 
-Build, deploy, and scale intelligent AI agents. From SDK to production in minutes.
+The complete platform for building, deploying, and scaling intelligent AI agents.
+
+## Why isA?
+
+- **End-to-End** - From SDK to production deployment
+- **Modular** - Use what you need, integrate with what you have
+- **Production-Ready** - Battle-tested infrastructure with 40+ microservices
+- **Open** - Built on open standards (MCP, OpenAPI, gRPC)
+
+## Platform Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              YOUR APPLICATION                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              AGENT SDK                                      │
+│                    Build AI agents with Python                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+┌───────────────┬───────────────┬───────────────┬───────────────┬─────────────┐
+│     MCP       │    Model      │     User      │     Data      │     OS      │
+│   50+ Tools   │  LLM Gateway  │  31 Services  │  Pipelines    │  Utilities  │
+└───────────────┴───────────────┴───────────────┴───────────────┴─────────────┘
+                                      │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              isA CLOUD                                      │
+│         Kubernetes • APISIX • Consul • 9 gRPC Services • ArgoCD            │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 ## Products
 
-| Product | Description |
-|---------|-------------|
-| [**Agent SDK**](/agent-sdk) | Build custom AI agents with Python |
-| [**MCP**](/mcp) | Model Context Protocol - 50+ tools |
-| [**Model**](/model) | LLM services with unified API |
-| [**Platform**](/platform) | Deploy to isA Cloud |
-| [**User**](/user) | Authentication and authorization |
-| [**Data**](/data) | Storage and pipelines |
+### Build
 
-## Pre-built Agents
+| Product | Description | Get Started |
+|---------|-------------|-------------|
+| [**Agent SDK**](/agent-sdk) | Python SDK for building AI agents with tools, memory, and workflows | [Quick Start →](/agent-sdk/quickstart) |
+| [**MCP**](/mcp) | Model Context Protocol with 50+ pre-built tools | [Tools List →](/mcp/tools) |
 
-- [**isA Vibe**](/agents/vibe) - Coding assistant (like Claude Code)
-- [**isA Creative**](/agents/creative) - Content creation
-- [**isA Agent**](/agents/default) - General-purpose agent
+### Connect
+
+| Product | Description | Get Started |
+|---------|-------------|-------------|
+| [**Model**](/model) | Unified LLM gateway supporting OpenAI, Anthropic, local models | [Quick Start →](/model/quickstart) |
+| [**User Services**](/user) | 31 microservices for auth, payments, storage, IoT, and more | [Quick Start →](/user/quickstart) |
+| [**Data**](/data) | Data lake, RAG pipelines, and file processing | [Quick Start →](/data/quickstart) |
+
+### Deploy
+
+| Product | Description | Get Started |
+|---------|-------------|-------------|
+| [**Cloud**](/cloud) | Production infrastructure with Kubernetes, APISIX, Consul | [Quick Start →](/cloud/quickstart) |
+| [**OS Services**](/os) | System utilities for notifications, scheduling, monitoring | [Quick Start →](/os/quickstart) |
 
 ## Quick Start
+
+### Install the SDK
 
 ```bash
 pip install isa-agent-sdk
 ```
 
-```python
-from isa_agent_sdk import query
+### Create Your First Agent
 
-async for msg in query("Hello, world!"):
+```python
+from isa_agent_sdk import Agent, query
+
+# Simple query
+async for msg in query("What is the weather in Tokyo?"):
     print(msg.content, end="")
+
+# Custom agent with tools
+agent = Agent(
+    name="my-assistant",
+    model="claude-sonnet-4-20250514",
+    tools=["web_search", "calculator"]
+)
+
+response = await agent.run("Search for recent AI news")
 ```
 
-[Get started with Agent SDK →](/agent-sdk)
+### Deploy to Production
+
+```bash
+# Deploy with isA Cloud
+isa deploy --env production
+```
+
+[Full Getting Started Guide →](/getting-started)
+
+## Pre-built Agents
+
+Ready-to-use agents for common tasks:
+
+| Agent | Description | Try It |
+|-------|-------------|--------|
+| [**isA Vibe**](/agents/vibe) | Coding assistant with file editing, terminal, and git | [Learn More →](/agents/vibe) |
+| [**isA Creative**](/agents/creative) | Content creation, writing, and brainstorming | [Learn More →](/agents/creative) |
+| [**isA Agent**](/agents/default) | General-purpose assistant | [Learn More →](/agents/default) |
+
+## Resources
+
+- [Architecture Overview](/architecture) - How it all fits together
+- [API Reference](/agent-sdk/api-reference) - Complete API documentation
+- [Changelog](/changelog) - Latest updates and releases
+- [FAQ](/faq) - Common questions answered
+
+## Community
+
+- [GitHub](https://github.com/isA-platform) - Source code and issues
+- [Discord](https://discord.gg/isa) - Chat with the community
+- [Twitter](https://twitter.com/isA_platform) - Latest news
