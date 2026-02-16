@@ -68,17 +68,17 @@ export function FeatureCard({ title, description, href, icon = 'rocket' }: Featu
   return (
     <Link
       href={href}
-      className="group block p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-lg transition-all duration-200"
+      className="group block p-6 bg-surface border border-border rounded-xl hover:border-accent hover:shadow-lg transition-all duration-200"
     >
       <div className="flex items-start gap-4">
         <div className="flex-shrink-0 p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 transition-colors">
           {icons[icon]}
         </div>
         <div>
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+          <h3 className="font-semibold text-foreground group-hover:text-accent transition-colors">
             {title}
           </h3>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          <p className="mt-1 text-sm text-muted">
             {description}
           </p>
         </div>

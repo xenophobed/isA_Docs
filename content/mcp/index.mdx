@@ -1,126 +1,77 @@
 # ISA MCP Platform
 
-Enterprise-grade Model Context Protocol (MCP) Server with intelligent tool discovery.
+Enterprise-grade Model Context Protocol (MCP) platform for tool registration, discovery, invocation, and external MCP aggregation.
 
 ## Overview
 
-ISA MCP is a unified platform for registering, discovering, and invoking MCP tools with skill-based hierarchical search.
+ISA MCP provides:
 
-### Core Value Propositions
+- Unified tool/prompt/resource registry
+- Skill-based semantic discovery
+- Human-in-the-loop (HIL) workflows
+- External MCP server aggregation
+- Multi-tenant isolation and security controls
 
-| Value | Description |
-|-------|-------------|
-| **Unified Registry** | Single API for all tools, multi-server aggregation |
-| **Intelligent Discovery** | Skill-based routing, semantic search |
-| **Context Optimization** | Minimal context output, lazy loading |
-| **Full Lifecycle** | Register → Discover → Invoke → Monitor |
+## Latest Updates (2026-02-14)
+
+- **Hybrid multi-tenant platform rollout** across tool, prompt, resource, skill, marketplace, and aggregator services.
+- **Security hardening** for auth bypass prevention, shell execution safeguards, path traversal protection, and registry fetch SSRF controls.
+- **Reliability improvements** for Qdrant retry handling, vector ID overflow protection, cache versioning, and atomic delete flows.
+- **Guidance refresh** with new security, multi-tenant, and reliability operational docs.
 
 ## Platform Capabilities
 
-| Feature | Count | Description |
-|---------|-------|-------------|
-| Tools | 88+ | Executable MCP tools |
-| Prompts | 50 | Reusable prompt templates |
-| Resources | 9 | Static and dynamic resources |
-| HIL Methods | 4 | Human interaction patterns |
-| Skills | 6 categories | Tool classification |
+| Feature | Coverage |
+|---------|----------|
+| Tools | 88+ built-in tools |
+| Prompts | 50+ reusable prompts |
+| Resources | 9+ resource groups |
+| HIL methods | 4 interaction modes |
+| Skills | 6 discovery categories |
+| Aggregator | External MCP server federation |
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         ISA MCP PLATFORM                         │
+│                         ISA MCP PLATFORM                        │
 ├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
-│  │    TOOLS     │  │   PROMPTS    │  │  RESOURCES   │          │
-│  │     88+      │  │     50       │  │      9       │          │
-│  └──────────────┘  └──────────────┘  └──────────────┘          │
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │                    SERVICES                               │  │
-│  │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ │  │
-│  │  │ Tool   │ │ Search │ │ Skill  │ │  HIL   │ │Progress│ │  │
-│  │  │Service │ │Service │ │Service │ │Service │ │Service │ │  │
-│  │  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘ │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │                   AGGREGATOR                              │  │
-│  │          Connect to External MCP Servers                  │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                  │
+│  Tools / Prompts / Resources                                   │
+│  ↓                                                             │
+│  Services: Tool, Prompt, Resource, Skill, Search, HIL, Sync   │
+│  ↓                                                             │
+│  Aggregator: connect and route to external MCP servers         │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## Key Features
+## Core Features
 
-### Skill-Based Search
+### Skill-Based Semantic Search
 
-Tools are classified into skills for efficient discovery:
-
-```
-Skills (6 Categories)
-├── Productivity (calendar, task, note, time)
-├── Communication (email, messaging, notifications)
-├── Data (query, analysis, visualization, export)
-├── File (operations, documents, media, cloud)
-├── Integration (API, webhooks, third-party)
-└── System (config, monitoring, security, admin)
-```
-
-### Semantic Search
-
-Find tools using natural language:
+Natural-language query routing through skill classification and ranked matches.
 
 ```python
 results = await search("schedule a meeting with John")
-# Returns: create_event, send_invite, check_availability
 ```
 
-### Human-in-the-Loop (HIL)
+### Human-in-the-Loop
 
-Four interaction patterns:
+Supports:
 
-| Method | Use Case |
-|--------|----------|
-| Authorization | Approve/reject actions |
-| Input | Collect user credentials or data |
-| Review | Review and edit content |
-| Combined | Input + authorization together |
+- authorization
+- input collection
+- review
+- combined input + authorization
 
-### Server Aggregation
+### Aggregator Service
 
-Connect to external MCP servers (GitHub, Slack, custom) and aggregate their tools.
+Register, connect, monitor, and route to external MCP servers with namespace-aware tool routing.
 
-## MCP Components
+## Security & Operations
 
-### Tools
-
-Executable functions exposed via MCP protocol.
-
-```python
-result = await client.call_tool("get_weather", {"city": "Tokyo"})
-```
-
-### Prompts
-
-Reusable text templates for AI workflows.
-
-```python
-prompt = await client.get_prompt("rag_search", {
-    "query": "What is AI?",
-    "context": "Learning about AI"
-})
-```
-
-### Resources
-
-Static and dynamic data sources.
-
-```python
-content = await client.read_resource("guardrail://config/pii")
-```
+- [Security](./security) - auth, authorization levels, SSRF/traversal/injection controls
+- [Multi-Tenant](./multi-tenant) - org scoping, global vs org-local resources
+- [Reliability](./reliability) - retry policy, overflow protection, cache/version patterns
 
 ## API Endpoints
 
@@ -133,22 +84,23 @@ Base URL: `http://localhost:8081`
 | `/search` | POST | Semantic search |
 | `/progress/{id}/stream` | GET | SSE progress stream |
 | `/api/v1/skills/*` | - | Skill management |
-| `/api/v1/aggregator/*` | - | Server aggregation |
+| `/api/v1/aggregator/*` | - | External server aggregation |
 
 ## Documentation
 
 ### Getting Started
-- [Quick Start](./quickstart) - Installation and basic usage
-- [Configuration](./configuration) - Server configuration
+- [Quick Start](./quickstart)
+- [Configuration](./configuration)
 
-### Core Components
-- [Tools](./tools) - Creating and using tools
-- [Prompts](./prompts) - Creating and using prompts
-- [Resources](./resources) - Creating and using resources
-- [Skills](./skills) - Skill-based classification
+### Components
+- [Tools](./tools)
+- [Prompts](./prompts)
+- [Resources](./resources)
+- [Skills](./skills)
 
-### Advanced Features
-- [Search & Discovery](./search) - Tool discovery
-- [Human-in-the-Loop](./hil) - Human interaction
-- [Progress Tracking](./progress) - Progress monitoring
-- [Server Aggregation](./aggregator) - External servers
+### Advanced
+- [Search & Discovery](./search)
+- [Human-in-the-Loop](./hil)
+- [Progress Tracking](./progress)
+- [Server Aggregation](./aggregator)
+

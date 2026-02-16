@@ -4,5 +4,6 @@ export default {
   'llm-services': 'LLM Services',
   'tool-calling': 'Tool Calling',
   providers: 'Providers',
-  caching: 'Caching'
+  caching: 'Caching',
+  'api-reference': 'API Reference'
 }

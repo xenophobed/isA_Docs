@@ -16,11 +16,11 @@ type PageProps = {
 export default async function Page(props: PageProps) {
   const params = await props.params
   const result = await importPage(params.mdxPath)
-  const { default: MDXContent, toc, metadata } = result
+  const { default: MDXContent, toc, metadata, sourceCode } = result
   const Wrapper = useMDXComponents().wrapper
 
   return (
-    <Wrapper toc={toc} metadata={metadata}>
+    <Wrapper toc={toc} metadata={metadata} sourceCode={sourceCode}>
       <MDXContent {...props} params={params} />
     </Wrapper>
   )

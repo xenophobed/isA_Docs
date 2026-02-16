@@ -1,0 +1,192 @@
+# Examples
+
+Sample projects and patterns for building agents with the isA Agent SDK.
+
+## Code Review Agent
+
+A focused agent that reviews code files for issues:
+
+```python
+from isa_agent_sdk import query, ISAAgentOptions
+
+options = ISAAgentOptions(
+    skills=["code-review"],
+    allowed_tools=["read_file", "glob_files"]
+)
+
+async for msg in query("Review main.py for bugs and security issues", options=options):
+    print(msg.content, end="" if msg.is_text else "\n")
+```
+
+## Research Agent
+
+An agent that searches the web and summarizes findings:
+
+```python
+from isa_agent_sdk import query, ISAAgentOptions
+
+options = ISAAgentOptions(
+    allowed_tools=["web_search", "web_crawl"],
+    max_iterations=50
+)
+
+async for msg in query("Research latest trends in AI agents for 2026", options=options):
+    if msg.is_tool_use:
+        print(f"[Searching: {msg.tool_args}]")
+    elif msg.is_text:
+        print(msg.content, end="")
+```
+
+## File Processing Agent
+
+Process files with durable execution and checkpointing:
+
+```python
+from isa_agent_sdk import query, ISAAgentOptions, ExecutionMode
+
+options = ISAAgentOptions(
+    execution_mode=ExecutionMode.COLLABORATIVE,
+    session_id="csv-processing-001",
+    allowed_tools=["read_file", "write_file", "glob_files", "bash_execute"]
+)
+
+async for msg in query("Process all CSV files in /data and generate a summary report", options=options):
+    if msg.is_checkpoint:
+        await msg.respond({"continue": True})
+    elif msg.is_text:
+        print(msg.content, end="")
+```
+
+## Desktop Automation Agent
+
+Run tools on a user's local machine via Pool Manager:
+
+```python
+from isa_agent_sdk import query, ISAAgentOptions, ExecutionEnv
+
+options = ISAAgentOptions(
+    env=ExecutionEnv.DESKTOP,
+    user_id="xenodennis",
+    allowed_tools=["read_file", "write_file", "bash_execute", "glob_files"]
+)
+
+async for msg in query("Find all Python files and count lines of code", options=options):
+    if msg.is_tool_use:
+        print(f"[Desktop: {msg.tool_name}]")
+    elif msg.is_text:
+        print(msg.content, end="")
+```
+
+## Multi-Turn Conversation
+
+Interactive agent with session memory:
+
+```python
+from isa_agent_sdk import ISAAgentClient
+
+async with ISAAgentClient() as client:
+    # First turn
+    await client.query("My project uses FastAPI and PostgreSQL")
+    async for msg in client.receive():
+        print(msg.content)
+
+    # Agent remembers context
+    await client.query("What database should I use for caching?")
+    async for msg in client.receive():
+        print(msg.content)  # Will consider PostgreSQL context
+
+    # Follow-up
+    response = await client.ask("Generate a Redis caching layer for my API")
+    print(response.content)
+```
+
+## Structured Output Agent
+
+Get validated JSON responses:
+
+```python
+from pydantic import BaseModel
+from isa_agent_sdk import query, ISAAgentOptions, OutputFormat
+
+class BugReport(BaseModel):
+    title: str
+    severity: str
+    file: str
+    line: int
+    description: str
+    fix_suggestion: str
+
+options = ISAAgentOptions(
+    skills=["code-review"],
+    allowed_tools=["read_file"],
+    output_format=OutputFormat.from_pydantic(BugReport)
+)
+
+async for msg in query("Find the most critical bug in auth.py", options=options):
+    if msg.has_structured_output:
+        bug = msg.parse(BugReport)
+        print(f"[{bug.severity}] {bug.title}")
+        print(f"  {bug.file}:{bug.line}")
+        print(f"  Fix: {bug.fix_suggestion}")
+```
+
+## Steward (Personal Assistant)
+
+Task management and proactive automation:
+
+```python
+from isa_agent_sdk import query, ISAAgentOptions
+
+options = ISAAgentOptions(
+    user_id="user-123",
+    allowed_tools=[
+        "create_task", "list_tasks", "complete_task",
+        "create_calendar_event", "get_upcoming_events",
+        "register_price_alert", "web_search"
+    ]
+)
+
+# Natural language task management
+async for msg in query("Create a high priority task to review the auth PR by Friday", options=options):
+    print(msg.content, end="" if msg.is_text else "\n")
+
+# Proactive alerts
+async for msg in query("Alert me when Bitcoin drops below $50,000", options=options):
+    print(msg.content, end="" if msg.is_text else "\n")
+```
+
+## Error Handling
+
+Robust agent with typed error handling:
+
+```python
+from isa_agent_sdk import (
+    query, ISAAgentOptions,
+    ISASDKError, ConnectionError, ToolExecutionError, SessionError
+)
+
+options = ISAAgentOptions(
+    allowed_tools=["web_search"],
+    max_iterations=10
+)
+
+try:
+    async for msg in query("Search for Python best practices", options=options):
+        if msg.is_text:
+            print(msg.content, end="")
+except ConnectionError as e:
+    print(f"Cannot reach service: {e.url}")
+except ToolExecutionError as e:
+    print(f"Tool {e.tool_name} failed: {e.message}")
+except SessionError as e:
+    print(f"Session error: {e.session_id}")
+except ISASDKError as e:
+    print(f"SDK error: {e}")
+```
+
+## Next Steps
+
+- [Agent SDK Overview](/agent-sdk) - Full SDK reference
+- [API Reference](/agent-sdk/api-reference) - Complete API docs
+- [Tools & MCP](/agent-sdk/tools) - Available tools
+- [Deployment Guide](/agent-sdk/deployment-guide) - Deploy to production

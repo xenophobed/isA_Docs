@@ -14,6 +14,7 @@ export default {
   user: 'User Services',
   data: 'Data',
   os: 'OS Services',
+  platform: 'Platform',
   '----': {
     type: 'separator',
     title: 'Learn'

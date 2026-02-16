@@ -1,0 +1,184 @@
+# Tool Development
+
+Build custom MCP tools to extend agent capabilities.
+
+## Overview
+
+The Model Context Protocol (MCP) allows you to create custom tools that agents can discover and use at runtime. Tools are registered with the MCP server and automatically become available to any agent with the appropriate permissions.
+
+## Tool Structure
+
+An MCP tool consists of:
+
+1. **Name** — unique identifier (e.g., `my_custom_tool`)
+2. **Description** — what the tool does (used by the LLM to decide when to call it)
+3. **Input schema** — JSON schema defining the tool's parameters
+4. **Handler** — the function that executes when the tool is called
+
+## Creating a Tool
+
+### Python
+
+```python
+from isa_mcp import Tool, ToolInput
+
+class MyTool(Tool):
+    name = "analyze_sentiment"
+    description = "Analyze the sentiment of a given text. Returns positive, negative, or neutral."
+
+    class Input(ToolInput):
+        text: str
+        language: str = "en"
+
+    async def execute(self, input: Input) -> dict:
+        # Your implementation here
+        sentiment = await analyze(input.text, input.language)
+        return {
+            "sentiment": sentiment.label,
+            "confidence": sentiment.score,
+            "language": input.language
+        }
+```
+
+### Registering the Tool
+
+```python
+from isa_mcp import MCPServer
+
+server = MCPServer()
+server.register_tool(MyTool())
+
+# Start the server
+await server.start(port=8083)
+```
+
+## Input Schema
+
+Tool inputs are defined using Pydantic models or JSON Schema:
+
+```python
+from pydantic import BaseModel, Field
+
+class SearchInput(BaseModel):
+    query: str = Field(description="Search query string")
+    max_results: int = Field(default=10, description="Maximum results to return", ge=1, le=100)
+    filters: dict | None = Field(default=None, description="Optional search filters")
+```
+
+The schema is automatically exposed to agents, who use the descriptions to understand how to call your tool.
+
+## Tool Categories
+
+Organize tools by category for better discoverability:
+
+| Category | Examples | Description |
+|----------|----------|-------------|
+| `search` | web_search, code_search | Information retrieval |
+| `filesystem` | read_file, write_file, glob | File operations |
+| `data` | postgres_query, redis_get | Database access |
+| `communication` | send_email, slack_message | Messaging |
+| `computation` | calculator, code_interpreter | Processing |
+| `external` | weather, stock_price | Third-party APIs |
+
+## Authentication & Permissions
+
+Tools can require specific permissions:
+
+```python
+class DeleteFileTool(Tool):
+    name = "delete_file"
+    description = "Delete a file at the given path"
+    requires_auth = True
+    risk_level = "high"  # triggers human-in-the-loop approval
+
+    class Input(ToolInput):
+        path: str
+
+    async def execute(self, input: Input) -> dict:
+        os.remove(input.path)
+        return {"deleted": input.path}
+```
+
+When `risk_level` is set to `"high"`, the agent will request human approval before executing. See [Human-in-the-Loop](/mcp/hil) for details.
+
+## Multi-Tenant Tools
+
+Tools can be scoped to tenants for isolation:
+
+```python
+class TenantTool(Tool):
+    name = "get_user_data"
+    description = "Get data for the current user"
+    tenant_scoped = True
+
+    async def execute(self, input: Input, context: ToolContext) -> dict:
+        tenant_id = context.tenant_id
+        return await fetch_user_data(tenant_id, input.user_id)
+```
+
+See [Multi-Tenant](/mcp/multi-tenant) for the full isolation model.
+
+## Testing Tools
+
+Test your tools locally before deployment:
+
+```python
+import pytest
+from isa_mcp.testing import MockToolContext
+
+@pytest.mark.asyncio
+async def test_sentiment_tool():
+    tool = MyTool()
+    context = MockToolContext(tenant_id="test-tenant")
+
+    result = await tool.execute(
+        MyTool.Input(text="I love this product!"),
+        context=context
+    )
+
+    assert result["sentiment"] == "positive"
+    assert result["confidence"] > 0.8
+```
+
+## Deploying Tools
+
+### Standalone Server
+
+```bash
+# Run your MCP server
+python -m my_tools.server --port 8083
+
+# Register with the MCP aggregator
+curl -X POST http://localhost:8083/api/v1/servers/register \
+  -d '{"name": "my-tools", "url": "http://localhost:8084"}'
+```
+
+### As Part of isA MCP
+
+Add your tool to the isA MCP server directly:
+
+```python
+# In your tool module
+from isa_mcp import register_tool
+
+@register_tool
+class MyTool(Tool):
+    # ... tool definition
+```
+
+## Best Practices
+
+1. **Write clear descriptions** — the LLM uses descriptions to decide when to use your tool
+2. **Validate inputs** — use Pydantic models with constraints (`ge`, `le`, `max_length`)
+3. **Return structured data** — return dicts with clear keys, not raw strings
+4. **Handle errors gracefully** — return error information rather than raising exceptions
+5. **Set appropriate risk levels** — mark destructive tools as `high` risk
+6. **Add tenant scoping** — isolate data access in multi-tenant environments
+7. **Test thoroughly** — use `MockToolContext` for unit tests
+
+## Next Steps
+
+- [MCP Overview](/mcp) — Architecture and concepts
+- [Tools Reference](/mcp/tools) — Browse built-in tools
+- [Security](/mcp/security) — Security model and sandboxing
+- [Multi-Tenant](/mcp/multi-tenant) — Tenant isolation

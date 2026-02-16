@@ -4,6 +4,7 @@ import { getPageMap } from 'nextra/page-map'
 import 'nextra-theme-docs/style.css'
 import './globals.css'
 import { AISearch } from '../components/AISearch'
+import { ThemeToggle } from '../components/ThemeToggle'
 
 export const metadata = {
   title: {
@@ -37,10 +38,10 @@ const Logo = () => (
 )
 
 const FooterContent = () => (
-  <div className="w-full">
+  <div className="w-full bg-background">
     <div className="flex flex-col md:flex-row justify-between items-center gap-4 py-4">
       <div className="flex items-center gap-4">
-        <span className="text-sm text-gray-600 dark:text-gray-400">
+        <span className="text-sm text-muted">
           © {new Date().getFullYear()} isA Platform. Open Source.
         </span>
       </div>
@@ -49,7 +50,7 @@ const FooterContent = () => (
           href="https://github.com/isA-platform"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+          className="text-sm text-muted hover:text-foreground"
         >
           GitHub
         </a>
@@ -57,7 +58,7 @@ const FooterContent = () => (
           href="https://discord.gg/isa"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+          className="text-sm text-muted hover:text-foreground"
         >
           Discord
         </a>
@@ -65,7 +66,7 @@ const FooterContent = () => (
           href="https://twitter.com/isA_platform"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+          className="text-sm text-muted hover:text-foreground"
         >
           Twitter
         </a>
@@ -91,13 +92,14 @@ export default async function RootLayout({
               logo={<Logo />}
               projectLink="https://github.com/isA-platform"
             >
-              <AISearch />
+              <ThemeToggle />
             </Navbar>
           }
           footer={<Footer><FooterContent /></Footer>}
           pageMap={pageMap}
           docsRepositoryBase="https://github.com/isA-platform/isA_Docs/tree/main/content"
           editLink="Edit this page on GitHub"
+          search={<AISearch />}
         >
           {children}
         </Layout>

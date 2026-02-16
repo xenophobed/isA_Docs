@@ -5,9 +5,28 @@ The Human-in-the-Loop system enables agents to pause execution and request human
 ## Overview
 
 HIL provides:
-- **Durable execution** - Survives process restarts via checkpointing
+- **Durable execution** - Survives process restarts via LangGraph checkpointing
 - **Async responses** - Can wait hours or days for human input
 - **Multiple interaction types** - Authorization, input collection, review
+- **MCP tool integration** - `ask_human` and `request_authorization` tools
+- **Security levels** - LOW, MEDIUM, HIGH, CRITICAL risk classification
+- **Schema validation** - Validate user input with JSON schemas and retry support
+
+## Comparison with Claude SDK
+
+| Feature | Claude SDK | isA Agent SDK | Advantage |
+|---------|-----------|---------------|-----------|
+| Basic Input | `human_input()` | `collect_input()` | Equivalent |
+| Selection | N/A | `collect_selection()` | More powerful |
+| Authorization | Hooks | `request_authorization()` | More powerful |
+| Review/Edit | N/A | `request_review()` | More powerful |
+| Combined Input+Auth | N/A | `request_input_with_authorization()` | More powerful |
+| Durable Execution | No | Yes (LangGraph checkpoints) | More powerful |
+| MCP Integration | No | Yes (`ask_human` tool) | More powerful |
+| Schema Validation | No | Yes (with retry) | More powerful |
+| Security Levels | No | Yes (LOW→CRITICAL) | More powerful |
+
+The isA HIL system is a superset of Claude SDK's `human_input()` functionality, providing additional methods for structured input, authorization workflows, and durable execution.
 
 ## Basic Authorization
 
@@ -378,6 +397,80 @@ async def respond_hil(session_id: str, response: dict):
     return {"status": "not_found"}
 ```
 
+## MCP Tool Integration
+
+The HIL system exposes tools via MCP (Model Context Protocol) that agents can call directly:
+
+### ask_human Tool
+
+The `ask_human` MCP tool allows agents to request human input during execution:
+
+```python
+# Tool definition in MCP
+@mcp.tool()
+async def ask_human(question: str, context: str = "", user_id: str = "default") -> str:
+    """Ask the human for additional information or clarification"""
+    # Returns structured response with:
+    # - status: "human_input_requested"
+    # - action: "ask_human"
+    # - data: { question, context, user_id, instruction }
+```
+
+**When agents call this:**
+```json
+{
+  "status": "human_input_requested",
+  "action": "ask_human",
+  "data": {
+    "question": "What deployment environment should I use?",
+    "context": "Deploying application v2.1.0",
+    "instruction": "This request requires human input. The client should handle the interaction."
+  }
+}
+```
+
+### request_authorization Tool
+
+The `request_authorization` MCP tool handles permission requests for sensitive operations:
+
+```python
+# Tool definition in MCP
+@mcp.tool()
+async def request_authorization(
+    tool_name: str,
+    reason: str,
+    user_id: str = "default",
+    tool_args: dict | None = None
+) -> str:
+    """Request human authorization before executing a tool"""
+    # Automatically determines security level based on tool name:
+    # - "delete", "forget" → HIGH
+    # - "admin" → CRITICAL
+    # - Default → MEDIUM
+```
+
+**Response includes:**
+- `request_id` - Unique authorization request ID
+- `security_level` - AUTO-determined: MEDIUM, HIGH, or CRITICAL
+- `expires_at` - Authorization expiration timestamp
+
+### Direct HIL Service Access
+
+For advanced use cases, access the HIL service directly:
+
+```python
+from isa_agent_sdk.services.human_in_the_loop import get_hil_service
+
+hil_service = get_hil_service()
+
+# Ask with interrupt (pauses graph execution)
+response = hil_service.ask_human_with_interrupt(
+    question="Should I proceed?",
+    context="About to delete 50 files",
+    node_source="cleanup_node"
+)
+```
+
 ## Best Practices
 
 1. **Use appropriate risk levels** - Set `security_level` or `risk_level` accurately
@@ -385,6 +478,7 @@ async def respond_hil(session_id: str, response: dict):
 3. **Handle rejections gracefully** - Always have a fallback path
 4. **Use durable execution** - Enable `COLLABORATIVE` mode for long operations
 5. **Timeout handling** - Consider what happens if user doesn't respond
+6. **Use MCP tools** - Prefer `ask_human` and `request_authorization` for standardized interactions
 
 ## Next Steps
 

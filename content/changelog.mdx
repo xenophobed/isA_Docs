@@ -12,6 +12,43 @@ All notable changes to the isA platform.
 
 ---
 
+## [0.6.0] - 2026-02-14
+
+### Added
+
+#### Agent SDK (`isa_agent_sdk`)
+- Updated docs for stabilized **Swarm + DAG** orchestration workflows.
+- Added current guidance for **A2A integration** (Agent Card + JSON-RPC adapter flow).
+- Synced reliability/testing status with latest suite (**234 passing tests** including audit coverage).
+
+#### Model Service (`isa_model`)
+- Added documentation for generic **ML prediction APIs**:
+  - training lifecycle routes
+  - prediction inference routes
+  - paginated listing (`limit` / `offset`) for models and runs
+- Added current **Lightning training API** route coverage.
+- Updated cache API examples to current HTTP methods (`POST` invalidation/clear).
+
+#### MCP (`isa_mcp`)
+- Added new guidance pages for:
+  - **Security** (`/mcp/security`)
+  - **Multi-Tenant** (`/mcp/multi-tenant`)
+  - **Reliability** (`/mcp/reliability`)
+- Updated MCP overview to reflect hybrid multi-tenant architecture and operational hardening.
+
+#### isA Vibe (`isa_vibe`)
+- Updated Vibe docs for generic multi-project orchestration support.
+- Added backlog command coverage (`ready`, `dispatch`, `status`, `--watch`).
+- Documented new security/infrastructure tooling:
+  - SAST + dependency scanning
+  - cross-service log query
+  - migration runner helpers
+
+### Fixed
+- Corrected stale Model cache endpoint examples to match current service behavior.
+
+---
+
 ## [0.5.0] - 2025-01-29
 
 ### Added

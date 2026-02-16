@@ -9,5 +9,9 @@ export default {
   search: 'Search & Discovery',
   hil: 'Human-in-the-Loop',
   progress: 'Progress Tracking',
-  aggregator: 'Server Aggregation'
+  aggregator: 'Server Aggregation',
+  security: 'Security',
+  'multi-tenant': 'Multi-Tenant',
+  reliability: 'Reliability',
+  development: 'Tool Development'
 }

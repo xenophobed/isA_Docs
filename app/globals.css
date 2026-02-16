@@ -1,14 +1,157 @@
 @import "tailwindcss";
 
-/* isA Platform Custom Theme */
+/* isA Platform Shared Design Tokens */
 :root {
-  --nextra-primary-hue: 210deg;
-  --nextra-primary-saturation: 100%;
+  /* Primary brand colors - Blue */
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
+  --color-primary-950: #172554;
+
+  /* Semantic colors */
+  --color-success-50: #ecfdf5;
+  --color-success-500: #10b981;
+  --color-success-600: #059669;
+
+  --color-warning-50: #fffbeb;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+
+  --color-error-50: #fef2f2;
+  --color-error-500: #ef4444;
+  --color-error-600: #dc2626;
+
+  --color-info-50: #eff6ff;
+  --color-info-500: #3b82f6;
+  --color-info-600: #2563eb;
+
+  /* Neutral grays */
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+  --color-gray-950: #030712;
+
+  /* Background and foreground */
+  --background: #ffffff;
+  --foreground: #111827;
+  --border: #e5e7eb;
+  --surface: #ffffff;
+  --surface-muted: #f9fafb;
+  --surface-elevated: #ffffff;
+  --text-muted: #6b7280;
+  --text-subtle: #9ca3af;
+  --border-strong: #d1d5db;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --focus-ring: #3b82f6;
+
+  /* Nextra theme integration */
+  --nextra-primary-hue: 217deg;
+  --nextra-primary-saturation: 91%;
+  --nextra-bg: 255 255 255;
 }
 
 .dark {
-  --nextra-primary-hue: 210deg;
-  --nextra-primary-saturation: 100%;
+  --background: #111827;
+  --foreground: #ffffff;
+  --border: #374151;
+  --surface: #111827;
+  --surface-muted: #0f172a;
+  --surface-elevated: #0b1220;
+  --text-muted: #cbd5e1;
+  --text-subtle: #94a3b8;
+  --border-strong: #4b5563;
+  --accent: #60a5fa;
+  --accent-hover: #3b82f6;
+  --focus-ring: #60a5fa;
+
+  --nextra-primary-hue: 217deg;
+  --nextra-primary-saturation: 91%;
+  --nextra-bg: 17 24 39;
+}
+
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+@theme inline {
+  /* Map CSS variables to Tailwind */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-muted: var(--text-muted);
+  --color-subtle: var(--text-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-focus-ring: var(--focus-ring);
+
+  --color-primary-50: var(--color-primary-50);
+  --color-primary-100: var(--color-primary-100);
+  --color-primary-200: var(--color-primary-200);
+  --color-primary-300: var(--color-primary-300);
+  --color-primary-400: var(--color-primary-400);
+  --color-primary-500: var(--color-primary-500);
+  --color-primary-600: var(--color-primary-600);
+  --color-primary-700: var(--color-primary-700);
+  --color-primary-800: var(--color-primary-800);
+  --color-primary-900: var(--color-primary-900);
+  --color-primary-950: var(--color-primary-950);
+
+  --color-success-50: var(--color-success-50);
+  --color-success-500: var(--color-success-500);
+  --color-success-600: var(--color-success-600);
+
+  --color-warning-50: var(--color-warning-50);
+  --color-warning-500: var(--color-warning-500);
+  --color-warning-600: var(--color-warning-600);
+
+  --color-error-50: var(--color-error-50);
+  --color-error-500: var(--color-error-500);
+  --color-error-600: var(--color-error-600);
+
+  --color-info-50: var(--color-info-50);
+  --color-info-500: var(--color-info-500);
+  --color-info-600: var(--color-info-600);
+
+  --color-gray-50: var(--color-gray-50);
+  --color-gray-100: var(--color-gray-100);
+  --color-gray-200: var(--color-gray-200);
+  --color-gray-300: var(--color-gray-300);
+  --color-gray-400: var(--color-gray-400);
+  --color-gray-500: var(--color-gray-500);
+  --color-gray-600: var(--color-gray-600);
+  --color-gray-700: var(--color-gray-700);
+  --color-gray-800: var(--color-gray-800);
+  --color-gray-900: var(--color-gray-900);
+  --color-gray-950: var(--color-gray-950);
+
+  /* Typography */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", Consolas, monospace;
 }
 
 /* Custom scrollbar */
@@ -43,4 +186,12 @@ table {
 /* ASCII diagrams in code blocks */
 pre code {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+/* Footer should follow theme */
+footer,
+.nextra-footer,
+[role="contentinfo"] {
+  background-color: var(--background) !important;
+  color: var(--foreground);
 }
