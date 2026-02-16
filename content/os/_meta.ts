@@ -5,5 +5,6 @@ export default {
   'cloud-os': 'Cloud OS',
   'desktop-agent': 'Desktop Agent',
   'python-repl': 'Python REPL',
-  'web-automation': 'Web Automation'
+  'web-automation': 'Web Automation',
+  deployment: 'Deployment'
 }

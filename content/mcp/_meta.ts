@@ -12,5 +12,6 @@ export default {
   aggregator: 'Server Aggregation',
   security: 'Security',
   'multi-tenant': 'Multi-Tenant',
-  reliability: 'Reliability'
+  reliability: 'Reliability',
+  development: 'Tool Development'
 }

@@ -1,0 +1,255 @@
+# Deployment
+
+Production deployment guide for isA OS Services.
+
+## Overview
+
+isA OS Services run as containerized microservices. This guide covers deploying the Pool Manager, Cloud OS, Desktop Agent, Python REPL, and Web Automation services to production.
+
+## Prerequisites
+
+| Requirement | Version | Purpose |
+|-------------|---------|---------|
+| Docker | 24+ | Container runtime |
+| Kubernetes | 1.28+ | Orchestration (production) |
+| Helm | 3.x | Chart management (optional) |
+| kubectl | Matching cluster | Cluster access |
+
+## Architecture
+
+```
+                    ┌─────────────────┐
+                    │   API Gateway   │
+                    └────────┬────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              │              │              │
+    ┌─────────v──┐  ┌───────v────┐  ┌──────v──────┐
+    │Pool Manager│  │  Cloud OS  │  │Desktop Agent│
+    │  :8095     │  │  :50064    │  │  :8096      │
+    └─────────┬──┘  └───────┬────┘  └─────────────┘
+              │              │
+    ┌─────────v──┐  ┌───────v────┐
+    │Python REPL │  │    Web     │
+    │  :8097     │  │ Automation │
+    └────────────┘  └────────────┘
+```
+
+## Docker Images
+
+Build images for each service:
+
+```bash
+# Pool Manager
+docker build -t isa-pool-manager:latest -f services/pool-manager/Dockerfile .
+
+# Cloud OS
+docker build -t isa-cloud-os:latest -f services/cloud-os/Dockerfile .
+
+# Desktop Agent
+docker build -t isa-desktop-agent:latest -f services/desktop-agent/Dockerfile .
+
+# Python REPL
+docker build -t isa-python-repl:latest -f services/python-repl/Dockerfile .
+
+# Web Automation
+docker build -t isa-web-automation:latest -f services/web-automation/Dockerfile .
+```
+
+## Kubernetes Deployment
+
+### Pool Manager
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pool-manager
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pool-manager
+  template:
+    metadata:
+      labels:
+        app: pool-manager
+    spec:
+      containers:
+      - name: pool-manager
+        image: isa-pool-manager:latest
+        ports:
+        - containerPort: 8095
+        env:
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: isa-secrets
+              key: redis-url
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8095
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8095
+          initialDelaySeconds: 5
+          periodSeconds: 10
+```
+
+### Cloud OS
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloud-os
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: cloud-os
+  template:
+    metadata:
+      labels:
+        app: cloud-os
+    spec:
+      containers:
+      - name: cloud-os
+        image: isa-cloud-os:latest
+        ports:
+        - containerPort: 50064
+        env:
+        - name: SANDBOX_ENABLED
+          value: "true"
+        - name: MAX_EXECUTION_TIME
+          value: "300"
+        resources:
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+        securityContext:
+          privileged: false
+          readOnlyRootFilesystem: true
+```
+
+## Environment Variables
+
+### Pool Manager
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `REDIS_URL` | `redis://localhost:6379` | Redis for state management |
+| `MAX_POOL_SIZE` | `10` | Maximum concurrent VMs |
+| `IDLE_TIMEOUT` | `300` | Seconds before idle VM reclaim |
+| `HEALTH_CHECK_INTERVAL` | `30` | Health check frequency (seconds) |
+
+### Cloud OS
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SANDBOX_ENABLED` | `true` | Enable sandboxed execution |
+| `MAX_EXECUTION_TIME` | `300` | Max seconds per execution |
+| `NETWORK_POLICY` | `restricted` | Network isolation level |
+| `GRPC_PORT` | `50064` | gRPC listener port |
+
+### Desktop Agent
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `POOL_MANAGER_URL` | `http://localhost:8095` | Pool Manager endpoint |
+| `AGENT_ID` | Auto-generated | Unique agent identifier |
+| `ALLOWED_PATHS` | `/home` | Paths accessible to agent |
+
+## Health Checks
+
+All services expose health endpoints:
+
+```bash
+# Pool Manager
+curl http://localhost:8095/health
+
+# Cloud OS (gRPC health)
+grpcurl -plaintext localhost:50064 grpc.health.v1.Health/Check
+
+# Desktop Agent
+curl http://localhost:8096/health
+
+# Python REPL
+curl http://localhost:8097/health
+```
+
+## Scaling
+
+### Horizontal Pod Autoscaling
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: pool-manager-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: pool-manager
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+```
+
+## Monitoring
+
+Services export Prometheus metrics:
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `pool_active_vms` | Gauge | Currently running VMs |
+| `pool_queue_depth` | Gauge | Pending VM requests |
+| `execution_duration_seconds` | Histogram | Code execution time |
+| `execution_errors_total` | Counter | Failed executions |
+
+## Troubleshooting
+
+### Pool Manager not assigning VMs
+
+1. Check `MAX_POOL_SIZE` — you may be at capacity
+2. Verify Redis connectivity: `redis-cli -u $REDIS_URL ping`
+3. Check for stuck VMs: `curl http://localhost:8095/api/v1/pools/status`
+
+### Cloud OS execution timeouts
+
+1. Increase `MAX_EXECUTION_TIME` for long-running tasks
+2. Check resource limits — CPU throttling causes slowdowns
+3. Review sandbox logs: `kubectl logs -l app=cloud-os`
+
+### Desktop Agent disconnects
+
+1. Verify Pool Manager URL is reachable from the agent
+2. Check `IDLE_TIMEOUT` — agent may be getting reclaimed
+3. Ensure network allows WebSocket connections
+
+## Next Steps
+
+- [Pool Manager](./pool-manager) — Resource gateway details
+- [Cloud OS](./cloud-os) — VM sandbox architecture
+- [Desktop Agent](./desktop-agent) — Local execution setup

@@ -19,5 +19,6 @@ export default {
   checkpointing: 'Checkpointing',
   'deployment-guide': 'Deployment',
   testing: 'Testing',
+  examples: 'Examples',
   'api-reference': 'API Reference'
 }
