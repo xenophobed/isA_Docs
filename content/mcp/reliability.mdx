@@ -1,0 +1,60 @@
+# Reliability
+
+Reliability patterns added and hardened in ISA MCP.
+
+## Key Improvements (2026-02-14)
+
+- Vector ID overflow detection for Qdrant point IDs
+- Exponential-backoff retry for transient Qdrant failures
+- Cache key versioning for safe schema evolution
+- Atomic delete patterns to avoid count/delete race conditions
+- Transaction-wrapped migrations with rollback-ready structure
+
+## Vector Store Safety
+
+### Overflow Detection
+
+Vector IDs use type offsets. Capacity is bounded per type to avoid collisions.
+
+- max items per type: `1,000,000`
+- warning threshold: `900,000`
+
+When limits are exceeded, writes fail early with explicit errors.
+
+### Retry Strategy
+
+Qdrant writes/deletes are retried on transient failures:
+
+- max retries: `3`
+- base delay: `0.5s`
+- exponential backoff progression
+
+## Cache Versioning
+
+Cache keys include an explicit schema version prefix:
+
+```text
+mcp:cache:v{CACHE_VERSION}:...
+```
+
+When schema changes, bumping `CACHE_VERSION` safely invalidates stale payload shapes.
+
+## Database Consistency
+
+### Atomic Deletes
+
+`COUNT + DELETE` race windows were removed via CTE-style atomic delete-and-count queries.
+
+### Migration Safety
+
+Migrations use:
+
+- `BEGIN/COMMIT` transactional boundaries
+- backup-first patterns for destructive changes
+- idempotent DDL guards where possible
+
+## Related
+
+- [Security](./security)
+- [Multi-Tenant](./multi-tenant)
+

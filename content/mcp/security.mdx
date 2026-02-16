@@ -1,0 +1,71 @@
+# Security
+
+Security model and controls in ISA MCP.
+
+## Security Layers
+
+- **Authentication**: JWT and API key support
+- **Authorization**: tool-level security levels (`LOW`, `MEDIUM`, `HIGH`)
+- **Tenant isolation**: org-scoped data filtering
+- **Input protection**: shell, file path, and network request hardening
+- **Auditability**: security event logging and authorization traces
+
+## Authentication
+
+### JWT
+
+Use bearer tokens with organization context:
+
+```http
+Authorization: Bearer <jwt_token>
+X-Organization-Id: <org_id>
+```
+
+Expected context includes `user_id`, `organization_id`, and `authorized_orgs`.
+
+### API Keys
+
+Use API keys in headers:
+
+```http
+X-API-Key: <api_key>
+```
+
+API key verification is integrated with the auth stack; query-param API key usage is disabled for security.
+
+## Tool Security Levels
+
+| Level | Typical Risk | Authorization |
+|-------|---------------|---------------|
+| `LOW` | Read-only or safe operations | Not required |
+| `MEDIUM` | Controlled writes / trusted external calls | Not required |
+| `HIGH` | Shell, filesystem writes, sensitive network operations | Required |
+
+`HIGH` tools trigger explicit authorization flow before execution.
+
+## Hardening Areas
+
+### Shell Execution
+
+- dangerous command patterns are blocked
+- high-risk operations require authorization
+- execution is logged for audit and traceability
+
+### File Operations
+
+- path traversal checks with resolved paths
+- sensitive system paths blocked by policy
+- destructive operations gated by authorization
+
+### External Fetch / SSRF Controls
+
+- allowlisted registry hosts
+- private and metadata IP ranges blocked
+- restrictive scheme handling and redirect controls
+
+## Related
+
+- [Tools](./tools)
+- [Multi-Tenant](./multi-tenant)
+- [Reliability](./reliability)
+

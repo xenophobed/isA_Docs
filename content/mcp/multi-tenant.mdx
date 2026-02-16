@@ -1,0 +1,63 @@
+# Multi-Tenant
+
+Organization-scoped isolation model for ISA MCP.
+
+## Data Scope Model
+
+Primary entities support tenant fields:
+
+- `org_id`
+- `is_global`
+
+Scope behavior:
+
+- `is_global = true`: visible across organizations
+- `is_global = false` + matching `org_id`: visible only to owning organization
+
+## Services with Tenant Isolation
+
+- Tool service
+- Prompt service
+- Resource service
+- Skill service
+- Marketplace service
+- Aggregator service
+
+## Tenant-Aware Query Pattern
+
+Standard repository filter pattern:
+
+```sql
+WHERE (is_global = TRUE OR org_id = $1)
+```
+
+Composite indexes are used to optimize tenant filtering.
+
+## Organization Switching
+
+Users can request a specific org context with:
+
+```http
+X-Organization-Id: <org_id>
+```
+
+Validation behavior:
+
+1. Header org must exist in `authorized_orgs`
+2. Unauthorized switch attempts are logged
+3. Requests continue under permitted org context only
+
+## Uniqueness Rules
+
+Name uniqueness is scoped by visibility:
+
+- global unique constraints for global resources
+- per-org unique constraints for org-private resources
+
+This allows a global resource and org-local resources to share the same display name safely.
+
+## Related
+
+- [Security](./security)
+- [Reliability](./reliability)
+
