@@ -1,0 +1,295 @@
+# API Reference
+
+Complete API reference for the isA Model Service.
+
+Base URL: `http://localhost:8082`
+
+## Authentication
+
+All requests require an API key via the `Authorization` header or `X-API-Key` header:
+
+```bash
+curl -H "Authorization: Bearer YOUR_API_KEY" http://localhost:8082/api/v1/models
+```
+
+## Inference
+
+### POST `/api/v1/invoke`
+
+Unified inference endpoint. Supports chat completions, streaming, tool calling, and structured outputs.
+
+```bash
+curl -X POST http://localhost:8082/api/v1/invoke \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [
+      {"role": "user", "content": "Hello!"}
+    ],
+    "stream": false
+  }'
+```
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `model` | `string` | Yes | Model identifier |
+| `messages` | `array` | Yes | Chat messages array |
+| `stream` | `boolean` | No | Enable streaming (default: `false`) |
+| `tools` | `array` | No | Tool definitions for function calling |
+| `tool_choice` | `string` | No | Tool selection strategy |
+| `response_format` | `object` | No | Structured output schema |
+| `temperature` | `number` | No | Sampling temperature (0-2) |
+| `max_tokens` | `integer` | No | Maximum tokens to generate |
+
+**Response:**
+
+```json
+{
+  "id": "chatcmpl-abc123",
+  "model": "gpt-4o-mini",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Hello! How can I help you?"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 10,
+    "completion_tokens": 8,
+    "total_tokens": 18
+  }
+}
+```
+
+### POST `/api/v1/invoke/v2`
+
+Extended invoke route with additional routing and observability features.
+
+---
+
+### GET `/api/v1/models`
+
+List available LLM models across all configured providers.
+
+```bash
+curl http://localhost:8082/api/v1/models
+```
+
+**Response:**
+
+```json
+{
+  "models": [
+    {"id": "gpt-4o-mini", "provider": "openai"},
+    {"id": "claude-sonnet-4-5-20250929", "provider": "anthropic"},
+    {"id": "llama3.2", "provider": "ollama"}
+  ]
+}
+```
+
+## Providers
+
+The Model Service routes requests to the appropriate provider based on the model identifier:
+
+| Provider | Models | Config Variable |
+|----------|--------|-----------------|
+| OpenAI | `gpt-4o`, `gpt-4o-mini`, `gpt-4.1-*` | `OPENAI_API_KEY` |
+| Anthropic | `claude-*` | `ANTHROPIC_API_KEY` |
+| Ollama | `llama*`, `mistral*`, `codellama*` | Local (no key needed) |
+| Cerebras | `cerebras-*` | `CEREBRAS_API_KEY` |
+| YYDS | `yyds-*` | `YYDS_API_KEY` |
+| Replicate | `replicate/*` | `REPLICATE_API_TOKEN` |
+
+[Providers documentation](./providers)
+
+## Caching
+
+### GET `/api/v1/cache/stats`
+
+Cache hit/miss statistics for L1 (exact) and L2 (semantic) caches.
+
+```bash
+curl http://localhost:8082/api/v1/cache/stats
+```
+
+### POST `/api/v1/cache/invalidate/{provider}/{model}`
+
+Invalidate cache entries for a specific provider and model.
+
+```bash
+curl -X POST http://localhost:8082/api/v1/cache/invalidate/openai/gpt-4o-mini
+```
+
+### POST `/api/v1/cache/clear`
+
+Clear all cache entries.
+
+```bash
+curl -X POST http://localhost:8082/api/v1/cache/clear
+```
+
+[Caching documentation](./caching)
+
+## Training
+
+### POST `/api/v1/models/training/train`
+
+Start a Lightning training pipeline.
+
+```bash
+curl -X POST http://localhost:8082/api/v1/models/training/train \
+  -H "Content-Type: application/json" \
+  -d '{
+    "algorithm": "closed_loop",
+    "dataset_id": "my-dataset",
+    "config": {
+      "epochs": 10,
+      "learning_rate": 0.001
+    }
+  }'
+```
+
+**Supported Algorithms:**
+
+| Algorithm | Description |
+|-----------|-------------|
+| `closed_loop` | Feedback loop optimization |
+| `apo` | Automatic prompt optimization |
+| `grpo` | Group relative policy optimization |
+| `custom` | Custom training pipeline |
+
+### GET `/api/v1/models/training/stats`
+
+Training job statistics and progress.
+
+### POST `/api/v1/models/training/export`
+
+Export training data and artifacts.
+
+### GET `/api/v1/models/training/config`
+
+Read the active training configuration.
+
+## Prediction (ML)
+
+Generic machine learning prediction endpoints for time-series forecasting and custom models.
+
+### POST `/api/v1/models/training/ml/prediction/models`
+
+Create and train a prediction model.
+
+```bash
+curl -X POST http://localhost:8082/api/v1/models/training/ml/prediction/models \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "daily-sales-forecast",
+    "model_type": "prophet",
+    "data": [
+      {"ds": "2026-01-01", "y": 120},
+      {"ds": "2026-01-02", "y": 125},
+      {"ds": "2026-01-03", "y": 130}
+    ]
+  }'
+```
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | `string` | Yes | Model display name |
+| `model_type` | `string` | Yes | Model type (`prophet`) |
+| `data` | `array` | Yes | Training data with `ds` (date) and `y` (value) keys |
+
+### GET `/api/v1/models/training/ml/prediction/models`
+
+List prediction models. Supports pagination.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limit` | `integer` | Max results (default: 20) |
+| `offset` | `integer` | Skip N results (default: 0) |
+
+### GET `/api/v1/models/training/ml/prediction/models/{model_id}`
+
+Get prediction model details including training status.
+
+### DELETE `/api/v1/models/training/ml/prediction/models/{model_id}`
+
+Delete a prediction model and its artifacts.
+
+### POST `/api/v1/models/inference/ml/prediction/models/{model_id}/predict`
+
+Run a prediction (forecast).
+
+```bash
+curl -X POST http://localhost:8082/api/v1/models/inference/ml/prediction/models/{model_id}/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "periods": 14,
+    "frequency": "D",
+    "include_history": false
+  }'
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `periods` | `integer` | Yes | Number of periods to forecast |
+| `frequency` | `string` | Yes | Frequency (`D`, `W`, `M`, `H`) |
+| `include_history` | `boolean` | No | Include historical data in response |
+
+### GET `/api/v1/models/inference/ml/prediction/models/{model_id}/predictions`
+
+List prediction runs for a model. Supports pagination (`limit`, `offset`).
+
+## Multi-Modal Support
+
+The invoke endpoint supports multi-modal inputs depending on the provider and model:
+
+| Modality | Description | Example Models |
+|----------|-------------|----------------|
+| Text | Standard chat completions | All models |
+| Vision | Image understanding | `gpt-4o`, `claude-*` |
+| Audio | Speech-to-text, text-to-speech | `whisper-*` |
+| Embedding | Vector embeddings | `text-embedding-*` |
+| Image | Image generation | `dall-e-*`, `replicate/*` |
+| Video | Video understanding | `replicate/*` |
+
+## Python Client
+
+```python
+from isa_model import AsyncISAModel
+
+async with AsyncISAModel(base_url="http://localhost:8082") as client:
+    # Chat completion
+    response = await client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": "Hello!"}]
+    )
+    print(response.choices[0].message.content)
+
+    # Streaming
+    async for chunk in await client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": "Tell me a story"}],
+        stream=True
+    ):
+        print(chunk.choices[0].delta.content or "", end="")
+```
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `OPENAI_API_KEY` | For OpenAI models | OpenAI provider key |
+| `ANTHROPIC_API_KEY` | For Claude models | Anthropic provider key |
+| `YYDS_API_KEY` | For YYDS models | YYDS provider key |
+| `REDIS_URL` | For caching | Redis connection URL |
+| `QDRANT_URL` | For semantic cache | Qdrant connection URL |
+| `NATS_URL` | For events | NATS connection URL |

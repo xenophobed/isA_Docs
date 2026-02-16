@@ -1,0 +1,186 @@
+# Memory & State
+
+Manage persistent memory and conversational state across agent sessions.
+
+## Overview
+
+The isA Agent SDK provides multiple layers of memory to give agents context awareness:
+
+- **Session memory** — conversational context within a single session
+- **Checkpointing** — durable state that survives restarts
+- **Working memory** — short-lived context for active tasks
+- **Long-term memory** — factual, episodic, semantic, and procedural memory stored via MCP
+
+## Session Memory
+
+Within a session, agents automatically maintain conversational context using the `ISAAgentClient`:
+
+```python
+from isa_agent_sdk import ISAAgentClient
+
+async with ISAAgentClient() as client:
+    await client.query("My name is Alice")
+    async for msg in client.receive():
+        print(msg.content)
+
+    # Agent remembers the context
+    await client.query("What's my name?")
+    async for msg in client.receive():
+        print(msg.content)  # "Your name is Alice"
+```
+
+Session memory persists for the lifetime of the client connection. For multi-turn conversations, use `ISAAgentClient` instead of the stateless `query()` function.
+
+## Checkpointing (Durable State)
+
+For long-running tasks, checkpointing saves execution state so agents can resume after interruptions:
+
+```python
+from isa_agent_sdk import query, ISAAgentOptions, ExecutionMode
+
+options = ISAAgentOptions(
+    execution_mode=ExecutionMode.COLLABORATIVE,
+    session_id="data-processing-001"
+)
+
+async for msg in query("Process all CSV files in /data", options=options):
+    if msg.is_checkpoint:
+        # Agent paused — respond to continue
+        await msg.respond({"continue": True})
+    elif msg.is_text:
+        print(msg.content, end="")
+```
+
+Resume later from the saved checkpoint:
+
+```python
+from isa_agent_sdk import resume
+
+async for msg in resume("data-processing-001"):
+    print(msg.content)
+```
+
+The checkpointer backend is configurable:
+
+| Backend | Config | Description |
+|---------|--------|-------------|
+| Redis | `CHECKPOINTER_BACKEND=redis` | Recommended for production |
+| Filesystem | `CHECKPOINTER_BACKEND=filesystem` | Local development fallback |
+
+[Checkpointing documentation](./checkpointing)
+
+## Working Memory
+
+Working memory stores short-lived context for the current task. It is automatically managed by the agent during execution and cleared when the task completes.
+
+```python
+# Working memory is used internally by the agent
+# Access it programmatically via MCP tools:
+from isa_agent_sdk import execute_tool
+
+# Store context for current task
+await execute_tool("store_working_memory", {
+    "key": "current_analysis",
+    "content": "User wants a performance report for Q1",
+    "ttl_minutes": 60
+})
+
+# Retrieve active working memories
+memories = await execute_tool("get_active_working_memories", {})
+```
+
+## Long-Term Memory (MCP)
+
+For persistent knowledge that spans sessions, the SDK integrates with the isA MCP memory service:
+
+### Factual Memory
+
+Store facts about users, projects, or domains:
+
+```python
+await execute_tool("store_factual_memory", {
+    "subject": "user-123",
+    "predicate": "prefers",
+    "object": "dark mode",
+    "confidence": 0.95
+})
+
+# Search by subject
+facts = await execute_tool("search_facts_by_subject", {
+    "subject": "user-123"
+})
+```
+
+### Episodic Memory
+
+Record events and interactions:
+
+```python
+await execute_tool("store_episodic_memory", {
+    "event_type": "code_review",
+    "description": "Reviewed auth module - found 3 security issues",
+    "metadata": {"module": "auth", "issues_found": 3}
+})
+```
+
+### Semantic Memory
+
+Store conceptual knowledge:
+
+```python
+await execute_tool("store_semantic_memory", {
+    "concept": "rate_limiting",
+    "category": "security_patterns",
+    "description": "Token bucket algorithm with Redis backend",
+    "related_concepts": ["throttling", "api_gateway"]
+})
+```
+
+### Procedural Memory
+
+Store how-to knowledge:
+
+```python
+await execute_tool("store_procedural_memory", {
+    "task": "deploy_to_kubernetes",
+    "steps": [
+        "Build Docker image",
+        "Push to registry",
+        "Apply K8s manifests",
+        "Run health checks"
+    ],
+    "preconditions": ["Docker installed", "kubectl configured"]
+})
+```
+
+### Searching Memories
+
+```python
+# General search across all memory types
+results = await execute_tool("search_memories", {
+    "query": "user preferences for UI",
+    "memory_types": ["factual", "episodic"],
+    "limit": 10
+})
+
+# Get memory statistics
+stats = await execute_tool("get_memory_statistics", {})
+```
+
+## Memory in Steward Mode
+
+When using the agent as a [Steward](./steward), memory is used automatically to:
+
+- Remember user preferences and habits
+- Track task history and completion patterns
+- Store calendar context for scheduling
+- Maintain trigger conditions and alert history
+
+## Best Practices
+
+1. **Use session memory** for conversational context — it's automatic with `ISAAgentClient`
+2. **Use checkpointing** for tasks that may take a long time or need to survive restarts
+3. **Use long-term memory** for knowledge that should persist across sessions
+4. **Set TTLs on working memory** to avoid stale context accumulating
+5. **Use factual memory** for structured facts (user preferences, project metadata)
+6. **Use episodic memory** for event logs (reviews, deployments, decisions)

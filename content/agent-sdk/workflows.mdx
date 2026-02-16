@@ -1,0 +1,192 @@
+# Workflows
+
+Build multi-step automation with Swarm handoffs and DAG execution.
+
+## Overview
+
+The isA Agent SDK supports two workflow patterns for orchestrating complex tasks:
+
+- **Swarm workflows** — dynamic agent-to-agent handoffs based on runtime decisions
+- **DAG workflows** — dependency-ordered execution of predefined task graphs
+
+Both patterns build on the SDK's [execution modes](./api-reference#execution-modes) and [checkpointing](./checkpointing) for durable execution.
+
+## Swarm Workflows
+
+Swarm workflows use dynamic handoffs where one agent decides at runtime to delegate to another. The orchestrator routes tasks between specialized agents using `[HANDOFF:...]` markers.
+
+```python
+from isa_agent_sdk import query, ISAAgentOptions, ExecutionMode
+
+options = ISAAgentOptions(
+    execution_mode=ExecutionMode.COLLABORATIVE,
+    max_iterations=50,
+    session_id="feature-workflow-001"
+)
+
+# The orchestrator dynamically routes between teams
+async for msg in query(
+    "Generate documentation, then write tests, then deploy the auth module",
+    options=options
+):
+    if msg.is_text:
+        print(msg.content, end="")
+    elif msg.is_tool_use:
+        print(f"[{msg.tool_name}]")
+```
+
+### How Handoffs Work
+
+When an agent completes its phase, it emits a handoff marker:
+
+```
+[HANDOFF: dev_team] CDD documentation complete. Tests needed for auth module.
+```
+
+The orchestrator intercepts handoff markers and routes to the next agent with full context from the previous phase.
+
+### Built-in Handoff Patterns
+
+| From | To | Trigger |
+|------|----|---------|
+| `product_team` | `dev_team` | CDD documentation complete |
+| `dev_team` | `ops_team` | Tests pass, ready for deploy |
+| `ops_team` | `dev_team` | Deploy health check failed |
+| Any team | `product_team` | Missing documentation detected |
+
+## DAG Workflows
+
+DAG (Directed Acyclic Graph) workflows define tasks and their dependencies upfront. The executor runs independent tasks in parallel and respects dependency ordering.
+
+```python
+from isa_agent_sdk import execute_tool
+
+# Create a DAG execution plan
+plan = await execute_tool("create_execution_plan", {
+    "name": "release-v2.0",
+    "tasks": [
+        {
+            "id": "docs",
+            "prompt": "Generate CDD documentation for auth module",
+            "team": "product"
+        },
+        {
+            "id": "tests",
+            "prompt": "Write unit and integration tests for auth",
+            "team": "dev",
+            "depends_on": ["docs"]
+        },
+        {
+            "id": "security-tests",
+            "prompt": "Run security audit on auth module",
+            "team": "dev",
+            "depends_on": ["docs"]
+        },
+        {
+            "id": "deploy",
+            "prompt": "Build and deploy auth service",
+            "team": "ops",
+            "depends_on": ["tests", "security-tests"]
+        }
+    ]
+})
+
+print(f"Plan created: {plan['plan_id']}")
+```
+
+### Execution Order
+
+The DAG executor resolves dependencies and runs tasks in optimal order:
+
+```
+docs ──────┬──→ tests ──────────┬──→ deploy
+           └──→ security-tests ─┘
+```
+
+In this example, `tests` and `security-tests` run in parallel after `docs` completes, and `deploy` waits for both.
+
+### Monitoring Plan Progress
+
+```python
+# Check plan status
+status = await execute_tool("get_plan_status", {
+    "plan_id": "release-v2.0"
+})
+
+for task in status["tasks"]:
+    print(f"  {task['id']}: {task['status']}")
+
+# View execution history
+history = await execute_tool("get_execution_history", {
+    "plan_id": "release-v2.0"
+})
+```
+
+### Replanning
+
+If a task fails or requirements change, replan the remaining work:
+
+```python
+# Replan from a specific task
+await execute_tool("replan_execution", {
+    "plan_id": "release-v2.0",
+    "from_task": "tests",
+    "reason": "New requirements added for auth module"
+})
+
+# Or adjust individual tasks
+await execute_tool("adjust_plan", {
+    "plan_id": "release-v2.0",
+    "task_id": "deploy",
+    "new_prompt": "Deploy to staging first, then production"
+})
+```
+
+## Phase Gates
+
+When running workflows through the isA Vibe orchestrator, phase gates enforce quality checks between stages:
+
+| Gate | Check | Action on Failure |
+|------|-------|-------------------|
+| CDD Complete | Documentation exists for the unit | Route to `product_team` |
+| Tests Pass | All tests pass for the unit | Route `dev_team` back to fix |
+| Git Commit | Changes committed after tests pass | Block deploy |
+| Deploy | Explicit request required | Skip unless requested |
+
+Phase gates are automatic when using the orchestrator. They can be bypassed with `--skip-gates` for development workflows.
+
+## Combining Patterns
+
+You can combine swarm and DAG patterns. Use DAGs for the overall workflow structure and swarm handoffs within individual tasks:
+
+```python
+# DAG defines the high-level flow
+# Each task uses swarm handoffs internally for sub-tasks
+plan = await execute_tool("create_execution_plan", {
+    "name": "full-feature",
+    "tasks": [
+        {
+            "id": "research-and-design",
+            "prompt": "Research best practices and generate CDD for payments",
+            "team": "product"
+            # product_team may internally handoff between research and CDD skills
+        },
+        {
+            "id": "implement",
+            "prompt": "TDD cycle for payments module",
+            "team": "dev",
+            "depends_on": ["research-and-design"]
+            # dev_team runs RED-GREEN-REFACTOR internally
+        }
+    ]
+})
+```
+
+## Best Practices
+
+1. **Use swarm workflows** for exploratory tasks where the path isn't known upfront
+2. **Use DAG workflows** for predictable multi-step pipelines (CI/CD, release processes)
+3. **Set session IDs** on long workflows for resume capability
+4. **Use `COLLABORATIVE` execution mode** for workflows that may need human input
+5. **Monitor with observability** — use `isa-vibe --obs` to track workflow progress
+6. **Keep DAG tasks focused** — each task should have a single clear objective

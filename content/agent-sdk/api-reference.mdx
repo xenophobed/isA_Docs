@@ -1,0 +1,268 @@
+# API Reference
+
+Complete API reference for the isA Agent SDK.
+
+## Core Functions
+
+### `query(prompt, options?)`
+
+Stream agent responses as they arrive.
+
+```python
+from isa_agent_sdk import query, ISAAgentOptions
+
+async for msg in query("Explain quantum computing"):
+    if msg.is_text:
+        print(msg.content, end="")
+    elif msg.is_tool_use:
+        print(f"[Tool: {msg.tool_name}]")
+```
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `prompt` | `str` | Yes | Natural language prompt |
+| `options` | `ISAAgentOptions` | No | Configuration options |
+
+**Yields:** `AgentMessage` objects in sequence.
+
+---
+
+### `ask(prompt, options?)`
+
+Get a single complete response (non-streaming).
+
+```python
+from isa_agent_sdk import ask
+
+result = await ask("What is 2+2?")
+print(result.content)
+```
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `prompt` | `str` | Yes | Natural language prompt |
+| `options` | `ISAAgentOptions` | No | Configuration options |
+
+**Returns:** `AgentMessage` with the complete response.
+
+---
+
+### `resume(session_id)`
+
+Resume a previously checkpointed session.
+
+```python
+from isa_agent_sdk import resume
+
+async for msg in resume("my-task-123"):
+    print(msg.content)
+```
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `session_id` | `str` | Yes | Session ID to resume |
+
+**Yields:** `AgentMessage` objects continuing from the checkpoint.
+
+---
+
+### `execute_tool(name, args)`
+
+Execute a tool directly without agent reasoning.
+
+```python
+from isa_agent_sdk import execute_tool
+
+result = await execute_tool("web_search", {"query": "Python tutorials"})
+print(result)
+```
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | `str` | Yes | Tool name |
+| `args` | `dict` | Yes | Tool arguments |
+
+**Returns:** Tool execution result.
+
+---
+
+### `get_available_tools(user_query?)`
+
+List tools available to the agent.
+
+```python
+from isa_agent_sdk import get_available_tools
+
+tools = await get_available_tools(user_query="search the web")
+for tool in tools:
+    print(f"{tool.name}: {tool.description}")
+```
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `user_query` | `str` | No | Filter tools by relevance to query |
+
+**Returns:** List of available tool descriptors.
+
+---
+
+## Classes
+
+### `ISAAgentOptions`
+
+Configuration for agent behavior.
+
+```python
+from isa_agent_sdk import ISAAgentOptions, ExecutionMode, OutputFormat
+
+options = ISAAgentOptions(
+    model="gpt-4.1-nano",
+    allowed_tools=["web_search", "read_file"],
+    max_iterations=30,
+    skills=["code-review", "debug"],
+    execution_mode=ExecutionMode.REACTIVE,
+    session_id="my-session",
+    user_id="user-123",
+)
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `model` | `str` | `"gpt-4.1-nano"` | LLM model to use |
+| `allowed_tools` | `list[str]` | `[]` | Permitted tools |
+| `max_iterations` | `int` | `30` | Max reasoning iterations |
+| `skills` | `list[str]` | `[]` | Skills to activate |
+| `execution_mode` | `ExecutionMode` | `REACTIVE` | Execution mode |
+| `session_id` | `str` | Auto-generated | Session identifier |
+| `user_id` | `str` | `None` | User identifier |
+| `env` | `ExecutionEnv` | `SERVER` | Execution environment |
+| `output_format` | `OutputFormat` | `None` | Structured output schema |
+
+[Full options guide](./options)
+
+---
+
+### `ISAAgentClient`
+
+Bidirectional client for multi-turn conversations.
+
+```python
+from isa_agent_sdk import ISAAgentClient
+
+async with ISAAgentClient() as client:
+    await client.query("Remember the number 42")
+    async for msg in client.receive():
+        print(msg.content)
+
+    response = await client.ask("What number did I mention?")
+    print(response.content)
+```
+
+| Method | Description |
+|--------|-------------|
+| `query(prompt)` | Send a prompt and stream responses |
+| `receive()` | Async iterator for incoming messages |
+| `ask(prompt)` | Send prompt and get single response |
+
+[Agent Client documentation](./agent-client)
+
+---
+
+### `ISAAgent`
+
+HTTP client for deployed applications.
+
+```python
+from isa_agent_sdk import ISAAgent
+
+client = ISAAgent(base_url="http://localhost:8000")
+response = client.chat.create(message="Hello!", user_id="user123")
+```
+
+| Method | Description |
+|--------|-------------|
+| `chat.create(message, user_id)` | Single response |
+| `chat.stream(message)` | Streaming response |
+
+---
+
+## Message Types
+
+### `AgentMessage`
+
+All responses are delivered as `AgentMessage` objects.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `content` | `str` | Message content |
+| `type` | `str` | Message type (see below) |
+| `is_text` | `bool` | True for text content |
+| `is_tool_use` | `bool` | True for tool calls |
+| `is_checkpoint` | `bool` | True for checkpoint requests |
+| `tool_name` | `str` | Tool name (if tool use) |
+| `tool_args` | `dict` | Tool arguments (if tool use) |
+| `has_structured_output` | `bool` | True if structured output available |
+
+**Message type values:**
+
+| Type | Description |
+|------|-------------|
+| `text` | Text content |
+| `thinking` | Chain-of-thought reasoning |
+| `tool_use` | Tool being called |
+| `tool_result` | Tool execution result |
+| `checkpoint` | Requires user input |
+| `error` | Error message |
+
+---
+
+## Execution Modes
+
+| Mode | Enum | Description |
+|------|------|-------------|
+| Reactive | `ExecutionMode.REACTIVE` | Standard request-response |
+| Collaborative | `ExecutionMode.COLLABORATIVE` | Durable with checkpoints |
+| Proactive | `ExecutionMode.PROACTIVE` | Event-driven autonomous |
+
+---
+
+## Error Classes
+
+```python
+from isa_agent_sdk import (
+    ISASDKError,        # Base error
+    ConnectionError,    # Service connection failed
+    ToolExecutionError, # Tool execution failed
+    SessionError,       # Session issues
+    ValidationError,    # Input validation failed
+)
+```
+
+| Error | Properties | Description |
+|-------|-----------|-------------|
+| `ISASDKError` | `message` | Base SDK error |
+| `ConnectionError` | `message`, `url` | Cannot reach service |
+| `ToolExecutionError` | `message`, `tool_name` | Tool failed |
+| `SessionError` | `message`, `session_id` | Session not found or expired |
+| `ValidationError` | `message`, `field` | Invalid input |
+
+---
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `ISA_API_KEY` | API key for isA platform |
+| `ISA_MODEL_URL` | Model service URL |
+| `ISA_MCP_URL` | MCP service URL |
+| `CHECKPOINTER_BACKEND` | Checkpointer backend (`redis`, `filesystem`) |

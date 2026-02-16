@@ -1,14 +1,23 @@
 export default {
   index: 'Overview',
   quickstart: 'Quickstart',
+  'agent-client': 'Agent Client',
+  a2a: 'A2A',
   streaming: 'Streaming',
   options: 'Configuration',
   messages: 'Messages',
   tools: 'Tools & MCP',
+  memory: 'Memory & State',
+  workflows: 'Workflows',
+  'structured-outputs': 'Structured Outputs',
+  'system-prompts': 'System Prompts',
   skills: 'Skills',
   triggers: 'Triggers',
+  steward: 'Steward',
   'human-in-the-loop': 'Human-in-the-Loop',
+  'desktop-execution': 'Desktop Execution',
   checkpointing: 'Checkpointing',
   'deployment-guide': 'Deployment',
-  testing: 'Testing'
+  testing: 'Testing',
+  'api-reference': 'API Reference'
 }
