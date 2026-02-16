@@ -2,27 +2,27 @@ import Link from 'next/link'
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Hero */}
       <section className="max-w-[90rem] mx-auto px-6 pt-20 pb-16">
         <div className="max-w-3xl">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white tracking-tight">
+          <h1 className="text-4xl md:text-5xl font-bold text-foreground tracking-tight">
             Build intelligent AI agents
           </h1>
-          <p className="mt-6 text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
+          <p className="mt-6 text-lg text-muted leading-relaxed">
             The isA platform provides everything you need to build, deploy, and manage AI agents.
             From simple chatbots to complex autonomous systems with tool use, human oversight, and durable execution.
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
             <Link
               href="/content/agent-sdk/quickstart"
-              className="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+              className="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)] rounded-md transition-colors"
             >
               Get started
             </Link>
             <Link
               href="/content/agent-sdk"
-              className="inline-flex items-center px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 rounded-md transition-colors"
+              className="inline-flex items-center px-5 py-2.5 text-sm font-medium text-foreground bg-surface-muted hover:bg-surface rounded-md transition-colors"
             >
               Read the docs
             </Link>
@@ -33,11 +33,11 @@ export default function HomePage() {
       {/* Code Example */}
       <section className="max-w-[90rem] mx-auto px-6 py-12">
         <div className="max-w-3xl">
-          <div className="rounded-lg overflow-hidden border border-gray-200 dark:border-neutral-800">
-            <div className="bg-gray-50 dark:bg-neutral-900 px-4 py-2 border-b border-gray-200 dark:border-neutral-800">
-              <span className="text-xs text-gray-500 dark:text-gray-500 font-mono">quickstart.py</span>
+          <div className="rounded-lg overflow-hidden border border-border bg-surface">
+            <div className="bg-surface-muted px-4 py-2 border-b border-border">
+              <span className="text-xs text-subtle font-mono">quickstart.py</span>
             </div>
-            <pre className="bg-gray-900 dark:bg-neutral-950 p-4 overflow-x-auto">
+            <pre className="bg-gray-900 p-4 overflow-x-auto">
               <code className="text-sm text-gray-100 font-mono">{`from isa_agent_sdk import query
 
 async for msg in query("Analyze this codebase"):
@@ -47,8 +47,8 @@ async for msg in query("Analyze this codebase"):
         print(f"Using {msg.tool_name}...")`}</code>
             </pre>
           </div>
-          <p className="mt-4 text-sm text-gray-500 dark:text-gray-500">
-            Install with <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-neutral-800 rounded text-gray-700 dark:text-gray-300">pip install isa-agent-sdk</code>
+          <p className="mt-4 text-sm text-subtle">
+            Install with <code className="px-1.5 py-0.5 bg-surface-muted rounded text-foreground">pip install isa-agent-sdk</code>
           </p>
         </div>
       </section>
@@ -90,8 +90,8 @@ async for msg in query("Analyze this codebase"):
       </section>
 
       {/* Documentation Links */}
-      <section className="max-w-[90rem] mx-auto px-6 py-16 border-t border-gray-200 dark:border-neutral-800">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-8">
+      <section className="max-w-[90rem] mx-auto px-6 py-16 border-t border-border">
+        <h2 className="text-xl font-semibold text-foreground mb-8">
           Documentation
         </h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -141,12 +141,12 @@ function FeatureCard({ title, description, href }: {
   return (
     <Link
       href={href}
-      className="group block p-6 rounded-lg border border-gray-200 dark:border-neutral-800 hover:border-gray-300 dark:hover:border-neutral-700 transition-colors"
+      className="group block p-6 rounded-lg border border-border bg-surface hover:border-[var(--color-primary-600)] transition-colors"
     >
-      <h3 className="text-base font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+      <h3 className="text-base font-semibold text-foreground group-hover:text-[var(--color-primary-600)] transition-colors">
         {title}
       </h3>
-      <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+      <p className="mt-2 text-sm text-muted leading-relaxed">
         {description}
       </p>
     </Link>
@@ -159,7 +159,7 @@ function DocSection({ title, links }: {
 }) {
   return (
     <div>
-      <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+      <h3 className="text-sm font-semibold text-foreground mb-3">
         {title}
       </h3>
       <ul className="space-y-2">
@@ -167,7 +167,7 @@ function DocSection({ title, links }: {
           <li key={link.href}>
             <Link
               href={link.href}
-              className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              className="text-sm text-muted hover:text-[var(--color-primary-600)] transition-colors"
             >
               {link.label}
             </Link>

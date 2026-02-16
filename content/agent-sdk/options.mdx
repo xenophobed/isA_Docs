@@ -25,9 +25,6 @@ async for msg in query("Your prompt", options=options):
 options = ISAAgentOptions(
     # LLM model to use
     model="gpt-4.1-nano",  # Default model
-
-    # Custom system prompt (optional)
-    system_prompt="You are a helpful coding assistant.",
 )
 ```
 
@@ -36,6 +33,48 @@ options = ISAAgentOptions(
 - `gpt-4o` - High capability
 - `deepseek-reasoner` - Reasoning model (chain-of-thought)
 - `llama-3.3-70b` - Open source alternative
+
+### System Prompts (Claude SDK Compatible)
+
+Customize agent behavior with system prompts. Supports three modes:
+
+```python
+from isa_agent_sdk import ISAAgentOptions, SystemPromptConfig, SystemPromptPreset
+
+# 1. Simple string - appends to default prompt (backwards compatible)
+options = ISAAgentOptions(
+    system_prompt="Always respond in formal English. Be concise."
+)
+
+# 2. Preset with custom additions (recommended)
+options = ISAAgentOptions(
+    system_prompt=SystemPromptConfig(
+        preset=SystemPromptPreset.REASON,  # Use MCP template
+        append="Focus on security implications in your analysis."
+    )
+)
+
+# 3. Full replacement (loses built-in capabilities)
+options = ISAAgentOptions(
+    system_prompt=SystemPromptConfig(
+        replace="You are a specialized security auditor. Analyze code for vulnerabilities."
+    )
+)
+```
+
+**Available Presets:**
+| Preset | MCP Template | Description |
+|--------|--------------|-------------|
+| `REASON` | `default_reason_prompt` | For reasoning/planning phase |
+| `RESPONSE` | `default_response_prompt` | For final response generation |
+| `RAG_REASON` | `rag_reason_prompt` | Reasoning with user's uploaded files |
+| `REVIEW` | `default_review_prompt` | For evaluating execution results |
+| `MINIMAL` | `minimal_prompt` | Minimal base, mostly custom instructions |
+
+**How it works:**
+- MCP stores the base prompt templates with variables (`{{memory}}`, `{{tools}}`, etc.)
+- Your `append` text is injected as `{{user_instructions}}` into the template
+- Use `replace` only when you need complete control (not recommended)
 
 ### Tool Configuration
 
@@ -248,6 +287,52 @@ options = ISAAgentOptions(
 )
 ```
 
+## Structured Outputs
+
+Get validated JSON matching a specific schema:
+
+```python
+from isa_agent_sdk import OutputFormat
+
+# From Pydantic model (recommended)
+from pydantic import BaseModel
+
+class Recipe(BaseModel):
+    name: str
+    ingredients: list[str]
+    prep_time_minutes: int
+
+options = ISAAgentOptions(
+    output_format=OutputFormat.from_pydantic(Recipe)
+)
+
+# From JSON schema
+options = ISAAgentOptions(
+    output_format=OutputFormat.json_schema({
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "items": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["name"]
+    })
+)
+
+# Simple JSON mode (no schema validation)
+options = ISAAgentOptions(
+    output_format=OutputFormat.json_object()
+)
+```
+
+**OutputFormat Types:**
+| Type | Description |
+|------|-------------|
+| `text` | Default free-form text |
+| `json_object` | Valid JSON (no schema) |
+| `json_schema` | Schema-validated JSON |
+
+See [Structured Outputs](./structured-outputs) for complete documentation.
+
 ## Skills Configuration
 
 ```python
@@ -310,7 +395,7 @@ runtime_config = options.to_runtime_config()
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `model` | str | "gpt-4.1-nano" | LLM model |
-| `system_prompt` | str | None | Custom system prompt |
+| `system_prompt` | str \| SystemPromptConfig | None | Custom system prompt (preset/append/replace) |
 | `allowed_tools` | List[str] | None | Tool allowlist |
 | `permission_mode` | PermissionMode | DEFAULT | Permission handling |
 | `execution_mode` | ExecutionMode | REACTIVE | Execution mode |
@@ -330,6 +415,7 @@ runtime_config = options.to_runtime_config()
 | `session_ttl` | int | 3600 | Session TTL (seconds) |
 | `resume` | str | None | Session to resume |
 | `skills` | List[str] | None | Skills to activate |
+| `output_format` | OutputFormat | None | Structured output format |
 | `mcp_servers` | Dict | {} | MCP server configs |
 | `pool_config` | PoolConfig | None | Pool configuration |
 | `metadata` | Dict | None | Additional metadata |
@@ -337,5 +423,6 @@ runtime_config = options.to_runtime_config()
 ## Next Steps
 
 - [Streaming](./streaming) - Response handling
+- [Structured Outputs](./structured-outputs) - JSON schema & Pydantic
 - [Human-in-the-Loop](./human-in-the-loop) - Approval workflows
 - [Skills](./skills) - Skill system guide

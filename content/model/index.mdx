@@ -1,6 +1,6 @@
 # isA Model Service
 
-Unified AI model inference service supporting LLM, vision, audio, embedding, image, and video models across multiple providers.
+Unified AI model platform for inference, training, and generic ML prediction.
 
 ## Installation
 
@@ -13,191 +13,134 @@ pip install isa-model
 ```python
 from isa_model import AsyncISAModel
 
-async with AsyncISAModel() as model:
-    response = await model.invoke(
-        input_data="Hello, world!",
-        model="gpt-4.1-nano",
-        provider="openai"
+async with AsyncISAModel(base_url="http://localhost:8082") as client:
+    response = await client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": "Hello!"}]
     )
-    print(response)
+    print(response.choices[0].message.content)
 ```
 
-## Core Concepts
+## Latest Updates (2026-02-14)
 
-### Service Types
+- **Generic ML prediction API added** with dedicated training and inference routes.
+- **Prediction endpoint pagination added** (`limit` / `offset`) for model and prediction lists.
+- **Tenant isolation enforced** for prediction model storage and retrieval.
+- **Prediction reliability/security hardening**:
+  - training data key validation (`ds`, `y`)
+  - frequency / period bounds
+  - sanitized error persistence
+  - deleted-model safety checks during background training
+  - HMAC integrity checks for saved model artifacts
+  - tenant-scoped LRU model caching and eviction limits
+- **Auth integration improved** by validating API keys through the auth service.
+- **Optional dependency guards** added for Lightning algorithm modules.
 
-The service supports multiple AI modalities:
+## Core Capabilities
 
-| Service Type | Description | Example Models |
-|--------------|-------------|----------------|
-| `text` | LLM chat/completion | gpt-4.1-nano, claude-3, llama-3.3 |
-| `vision` | Image analysis | gpt-4o-vision, qwen2-vl |
-| `audio` | TTS/STT | whisper, tts-1, openvoice |
-| `embedding` | Text embeddings | text-embedding-3-small |
-| `image` | Image generation | dall-e-3, flux |
-| `video` | Video generation | sora, hunyuan |
+### Inference
 
-### Provider Architecture
-
-```
-Backend (WHERE)     Provider (WHAT)      Task (HOW)
-─────────────────   ─────────────────    ─────────────────
-cloud               openai               chat
-ray_serve           anthropic            generate
-modal               yyds                 analyze
-local               cerebras             embed
-                    ollama               vision
-                    replicate            tts/stt
-```
-
-### Basic Usage
-
-```python
-from isa_model import AsyncISAModel
-
-client = AsyncISAModel()
-
-# Text generation
-response = await client.invoke(
-    input_data=[{"role": "user", "content": "Explain AI briefly"}],
-    model="gpt-4.1-nano",
-    provider="openai",
-    service_type="text",
-    task="chat"
-)
-
-# With streaming
-async for chunk in client.stream(
-    input_data="Write a poem",
-    model="gpt-4.1-nano",
-    stream=True
-):
-    print(chunk, end="")
-```
-
-[Learn more in Quick Start](./quickstart)
-
-### Tool Calling
-
-Enable function calling with any compatible model:
-
-```python
-tools = [{
-    "type": "function",
-    "function": {
-        "name": "get_weather",
-        "description": "Get weather for a location",
-        "parameters": {
-            "type": "object",
-            "properties": {"location": {"type": "string"}},
-            "required": ["location"]
-        }
-    }
-}]
-
-response = await client.invoke(
-    input_data=[{"role": "user", "content": "What's the weather in Tokyo?"}],
-    model="gpt-4.1-nano",
-    tools=tools
-)
-
-# Response includes tool_calls if model wants to use a tool
-if response.get("tool_calls"):
-    for call in response["tool_calls"]:
-        print(f"Tool: {call['function']['name']}")
-        print(f"Args: {call['function']['arguments']}")
-```
-
-[Tool calling guide](./tool-calling)
-
-### Direct Service Access
-
-For advanced use cases, access services directly:
-
-```python
-from isa_model.inference.ai_factory import AIFactory
-
-factory = AIFactory()
-
-# Get LLM service
-llm = factory.get_service(
-    service_type="text",
-    provider="openai",
-    model="gpt-4.1-nano"
-)
-
-# Use service methods
-response = await llm.ainvoke("Hello!")
-print(response)
-
-# Streaming
-async for token in llm.astream("Write a story"):
-    print(token, end="")
-```
-
-[LLM services guide](./llm-services)
+- OpenAI-compatible chat/completions interface
+- Multi-provider routing (OpenAI, Anthropic, Ollama, Cerebras, YYDS, Replicate)
+- Streaming, tool-calling, and structured outputs
+- Multi-modal support (text, vision, audio, embedding, image, video)
 
 ### Caching
 
-Two-layer caching for cost optimization:
+- L1 exact-match cache (Redis)
+- L2 semantic cache (Qdrant)
+- Cache stats and invalidation endpoints
 
-```python
-# Caching is automatic for identical requests
-# Layer 1: Exact match (Redis)
-# Layer 2: Semantic similarity (Qdrant)
+### Training
 
-response1 = await client.invoke(input_data="What is Python?", ...)
-response2 = await client.invoke(input_data="What is Python?", ...)  # Cache hit
+- Lightning training pipeline endpoints for trace-based optimization
+- Algorithm support for `closed_loop`, `apo`, `grpo`, and `custom`
 
-# Semantic cache also matches similar queries
-response3 = await client.invoke(input_data="Explain Python", ...)  # Semantic match
+### Generic ML Prediction
+
+- Model lifecycle for prediction models (create/train/list/get/delete)
+- Inference endpoint for forecasts
+- Tenant-scoped prediction history with pagination
+
+## API Endpoints
+
+Base URL: `http://localhost:8082`
+
+### Inference & Cache
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/invoke` | POST | Unified inference endpoint |
+| `/api/v1/invoke/v2` | POST | Extended invoke route |
+| `/api/v1/models` | GET | List available LLM models |
+| `/api/v1/cache/stats` | GET | Cache statistics |
+| `/api/v1/cache/invalidate/{provider}/{model}` | POST | Invalidate cache by provider/model |
+| `/api/v1/cache/clear` | POST | Clear all cache entries |
+
+### Training
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/models/training/train` | POST | Start Lightning training |
+| `/api/v1/models/training/stats` | GET | Training statistics |
+| `/api/v1/models/training/export` | POST | Export training data |
+| `/api/v1/models/training/config` | GET | Read active training config |
+
+### Prediction (ML)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/models/training/ml/prediction/models` | POST | Create + start training prediction model |
+| `/api/v1/models/training/ml/prediction/models` | GET | List prediction models (`limit`, `offset`) |
+| `/api/v1/models/training/ml/prediction/models/{model_id}` | GET | Get prediction model details |
+| `/api/v1/models/training/ml/prediction/models/{model_id}` | DELETE | Delete prediction model |
+| `/api/v1/models/inference/ml/prediction/models/{model_id}/predict` | POST | Run prediction |
+| `/api/v1/models/inference/ml/prediction/models/{model_id}/predictions` | GET | List prediction runs (`limit`, `offset`) |
+
+## Prediction Example
+
+```bash
+# 1) Create + train a model (prophet)
+curl -X POST http://localhost:8082/api/v1/models/training/ml/prediction/models \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "daily-sales-forecast",
+    "model_type": "prophet",
+    "data": [
+      {"ds": "2026-01-01", "y": 120},
+      {"ds": "2026-01-02", "y": 125}
+    ]
+  }'
+
+# 2) Run prediction
+curl -X POST http://localhost:8082/api/v1/models/inference/ml/prediction/models/<MODEL_ID>/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "periods": 14,
+    "frequency": "D",
+    "include_history": false
+  }'
 ```
-
-[Caching guide](./caching)
 
 ## Documentation
 
 ### Getting Started
-- [Quick Start](./quickstart) - First steps with the service
-- [Providers](./providers) - Configure model providers
+- [Quick Start](./quickstart) - First steps
+- [Providers](./providers) - Provider configuration
 
 ### Features
-- [LLM Services](./llm-services) - Text generation and chat
-- [Tool Calling](./tool-calling) - Function calling guide
-- [Caching](./caching) - Cache configuration
-
-## API Endpoints
-
-Base URL: `http://localhost:8082/api/v1`
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/invoke` | POST | Unified inference endpoint |
-| `/models` | GET | List available models |
-| `/health` | GET | Service health check |
-| `/cache/stats` | GET | Cache statistics |
-
-### Example Request
-
-```bash
-curl -X POST http://localhost:8082/api/v1/invoke \
-  -H "Content-Type: application/json" \
-  -d '{
-    "input_data": [{"role": "user", "content": "Hello!"}],
-    "model": "gpt-4.1-nano",
-    "provider": "openai",
-    "service_type": "text",
-    "task": "chat"
-  }'
-```
+- [LLM Services](./llm-services) - Text generation and routing
+- [Tool Calling](./tool-calling) - Function calling
+- [Caching](./caching) - Cache architecture and tuning
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `OPENAI_API_KEY` | OpenAI API key | - |
-| `ANTHROPIC_API_KEY` | Anthropic API key | - |
-| `YYDS_API_KEY` | YYDS proxy API key | - |
-| `REDIS_URL` | Redis connection URL | localhost:6379 |
-| `QDRANT_URL` | Qdrant connection URL | localhost:6333 |
-| `NATS_URL` | NATS connection URL | localhost:4222 |
+| Variable | Description |
+|----------|-------------|
+| `OPENAI_API_KEY` | OpenAI provider key |
+| `ANTHROPIC_API_KEY` | Anthropic provider key |
+| `YYDS_API_KEY` | YYDS provider key |
+| `REDIS_URL` | Redis URL for caching |
+| `QDRANT_URL` | Qdrant URL for semantic cache |
+| `NATS_URL` | NATS URL for events |
+

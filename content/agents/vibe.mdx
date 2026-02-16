@@ -1,73 +1,84 @@
 # isA Vibe
 
-Your AI coding assistant, like Claude Code.
+AI-SDLC orchestration assistant for building and operating software projects with CDD + TDD workflows.
 
 ## Overview
 
-isA Vibe is a powerful coding assistant built on the isA Agent SDK. It helps developers write, debug, and refactor code with natural language interactions.
+isA Vibe runs on top of `isa_agent_sdk` and is designed to work across project types (Python services, React apps, data projects), even when `config/vibe.yaml` is missing.
 
-## Features
+## Latest Updates (2026-02-14)
 
-### Code Understanding
-- Read and analyze codebases
-- Explain complex code
-- Find bugs and issues
-- Suggest improvements
+- **Generic project support** improved for any repo layout.
+- **Backlog automation** expanded via CLI flows for backlog readiness, dispatch, status, and watch mode.
+- **New security tools** added:
+  - SAST scanning (`scan_project`, `scan_diff`, `scan_file`)
+  - dependency vulnerability scanning (`scan_dependencies`)
+- **New infrastructure tools** added:
+  - cross-service log query / correlation
+  - migration history / validate / upgrade / generate helpers
+- **MCP cleanup** completed by moving core infra helpers to direct local tools for lower overhead.
 
-### Code Generation
-- Write new code from descriptions
-- Generate tests
-- Create documentation
-- Implement features
+## Core Capabilities
 
-### Refactoring
-- Improve code structure
-- Apply best practices
-- Modernize legacy code
-- Optimize performance
+### AI-SDLC Workflow
 
-### Multi-Language Support
-- Python, JavaScript, TypeScript
-- Go, Rust, Java
-- C, C++, C#
-- And many more
+- CDD documentation and contract generation
+- TDD cycle execution and validation
+- deployment and operations automation
+- checkpointed orchestration with resumable sessions
+
+### Backlog Workflows
+
+- watch and dispatch backlog items
+- route work to appropriate agent flows
+- track workflow state and logs
+
+### Security + Infra Assistance
+
+- static security analysis
+- dependency scanning
+- environment/service log querying
+- migration validation and upgrade support
 
 ## Quick Start
 
 ```bash
-# Install isA Vibe CLI
+# Install
 pip install isa-vibe
 
-# Start coding
-isa-vibe "Help me refactor this function"
+# Natural language run
+isa-vibe "Generate CDD documentation for the auth module"
+
+# Explicit run subcommand
+isa-vibe run "Fix failing tests in payment service" --unit payment
+
+# Backlog management
+isa-vibe backlog ready --repo owner/repo
+isa-vibe backlog dispatch --repo owner/repo
+isa-vibe backlog --watch --repo owner/repo
 ```
 
-## Skills
-
-isA Vibe comes with specialized skills:
-- `code-review` - Expert code review
-- `debug` - Systematic debugging
-- `refactor` - Code improvement
-- `test-writer` - Test generation
-- `documentation` - Doc generation
-
-## Configuration
+## Example Configuration
 
 ```yaml
-# .isa-vibe.yaml
-skills:
-  - code-review
-  - debug
-allowed_tools:
-  - read_file
-  - write_file
-  - bash
-max_iterations: 50
+# config/vibe.yaml
+project:
+  name: my-project
+  type: python
+
+source:
+  root: src
+  pattern: "{component}"
+  components: [auth, payment, user]
 ```
 
-## Coming Soon
+## Tooling Example
 
-- IDE integrations (VS Code, JetBrains)
-- Project scaffolding
-- CI/CD integration
-- Team collaboration
+```python
+from agents.tools import scan_project, search_logs, migration_validate
+
+security_result = await scan_project("/path/to/repo")
+log_result = await search_logs(service="auth", query="ERROR", limit=50)
+migration_result = await migration_validate("/path/to/repo")
+```
+

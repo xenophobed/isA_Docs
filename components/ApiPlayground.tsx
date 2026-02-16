@@ -72,18 +72,18 @@ export function ApiPlayground({
   }
 
   return (
-    <div className="my-6 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+    <div className="my-6 border border-border rounded-xl overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+      <div className="flex items-center gap-3 px-4 py-3 bg-surface-muted border-b border-border">
         <span className={`px-2 py-1 text-xs font-bold text-white rounded ${methodColors[method]}`}>
           {method}
         </span>
-        <code className="text-sm text-gray-700 dark:text-gray-300">{baseUrl}{endpoint}</code>
+        <code className="text-sm text-muted">{baseUrl}{endpoint}</code>
       </div>
 
       {/* API Key Input */}
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+      <div className="px-4 py-3 border-b border-border">
+        <label className="block text-sm font-medium text-muted mb-2">
           API Key
         </label>
         <div className="relative">
@@ -92,12 +92,12 @@ export function ApiPlayground({
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder="sk-..."
-            className="w-full px-3 py-2 pr-20 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+            className="w-full px-3 py-2 pr-20 text-sm border border-border-strong rounded-lg bg-surface focus:ring-2 focus:ring-focus-ring focus:border-transparent font-mono"
           />
           <button
             type="button"
             onClick={() => setShowApiKey(!showApiKey)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-subtle hover:text-muted"
           >
             {showApiKey ? 'Hide' : 'Show'}
           </button>
@@ -106,25 +106,25 @@ export function ApiPlayground({
 
       {/* Request Body */}
       {method !== 'GET' && (
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <div className="px-4 py-3 border-b border-border">
+          <label className="block text-sm font-medium text-muted mb-2">
             Request Body
           </label>
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+            className="w-full px-3 py-2 text-sm border border-border-strong rounded-lg bg-surface focus:ring-2 focus:ring-focus-ring focus:border-transparent font-mono"
             rows={8}
           />
         </div>
       )}
 
       {/* Submit Button */}
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+      <div className="px-4 py-3 border-b border-border bg-surface-muted">
         <button
           onClick={handleSubmit}
           disabled={loading}
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          className="px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
         >
           {loading ? (
             <>
@@ -149,7 +149,7 @@ export function ApiPlayground({
       {(response || error) && (
         <div className="px-4 py-3">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Response</span>
+            <span className="text-sm font-medium text-muted">Response</span>
             {statusCode && responseTime && (
               <div className="flex items-center gap-3 text-xs">
                 <span className={`px-2 py-0.5 rounded ${
@@ -159,7 +159,7 @@ export function ApiPlayground({
                 }`}>
                   {statusCode}
                 </span>
-                <span className="text-gray-500">{responseTime}ms</span>
+                <span className="text-subtle">{responseTime}ms</span>
               </div>
             )}
           </div>
@@ -211,36 +211,36 @@ export function DemoPlayground({
   }
 
   return (
-    <div className="my-6 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
-      <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+    <div className="my-6 border border-border rounded-xl overflow-hidden">
+      <div className="flex items-center gap-3 px-4 py-3 bg-surface-muted border-b border-border">
         <span className={`px-2 py-1 text-xs font-bold text-white rounded ${methodColors[method]}`}>
           {method}
         </span>
-        <code className="text-sm text-gray-700 dark:text-gray-300">https://api.isa.io{endpoint}</code>
+        <code className="text-sm text-muted">https://api.isa.io{endpoint}</code>
         <span className="ml-auto text-xs px-2 py-1 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 rounded">
           Demo Mode
         </span>
       </div>
 
       {method !== 'GET' && (
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <div className="px-4 py-3 border-b border-border">
+          <label className="block text-sm font-medium text-muted mb-2">
             Request Body
           </label>
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+            className="w-full px-3 py-2 text-sm border border-border-strong rounded-lg bg-surface focus:ring-2 focus:ring-focus-ring focus:border-transparent font-mono"
             rows={6}
           />
         </div>
       )}
 
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+      <div className="px-4 py-3 border-b border-border bg-surface-muted">
         <button
           onClick={handleDemo}
           disabled={loading}
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+          className="px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-50 transition-colors flex items-center gap-2"
         >
           {loading ? 'Sending...' : 'Try It'}
         </button>
@@ -249,12 +249,12 @@ export function DemoPlayground({
       {showResponse && (
         <div className="px-4 py-3">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Response</span>
+            <span className="text-sm font-medium text-muted">Response</span>
             <div className="flex items-center gap-3 text-xs">
               <span className="px-2 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
                 200
               </span>
-              <span className="text-gray-500">142ms</span>
+              <span className="text-subtle">142ms</span>
             </div>
           </div>
           <pre className="p-3 bg-gray-900 text-gray-100 rounded-lg overflow-x-auto text-sm">

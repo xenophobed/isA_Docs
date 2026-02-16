@@ -18,6 +18,28 @@ All execution modes have been tested against real infrastructure (isA_Model, isA
 | Session Resumption | ✅ PASS | ~1.5s | Checkpoint restore |
 | Direct Tool Execution | ✅ PASS | ~40ms | MCP tool execution |
 | Tool Discovery | ✅ PASS | &lt;10ms | Semantic tool search |
+| A2A Server + Client (Local) | ✅ PASS | ~60-120s | 8101 → 8102 JSON-RPC call via `/a2a` |
+
+## A2A Verification
+
+A2A was validated with:
+
+- `auth_service`: `http://localhost:8201`
+- agent A: `http://localhost:8101`
+- agent B: `http://localhost:8102`
+
+Validated endpoints:
+
+- `GET /.well-known/agent-card.json`
+- `POST /a2a`
+
+Validated flow:
+
+- `POST /api/v1/a2a/test-client` on 8101
+- target: `http://localhost:8102/a2a`
+- result: success with JSON-RPC response
+
+See full setup and code examples: [A2A guide](./a2a)
 
 ## Verified Execution Modes
 

@@ -164,13 +164,13 @@ print(f"Tokens saved: {stats['total_saved_tokens']:,}")
 ### Invalidate Specific Model
 
 ```bash
-curl -X DELETE http://localhost:8082/api/v1/cache/invalidate/openai/gpt-4.1-nano
+curl -X POST http://localhost:8082/api/v1/cache/invalidate/openai/gpt-4.1-nano
 ```
 
 ### Clear All Cache
 
 ```bash
-curl -X DELETE http://localhost:8082/api/v1/cache/clear
+curl -X POST http://localhost:8082/api/v1/cache/clear
 ```
 
 ### Programmatic Invalidation

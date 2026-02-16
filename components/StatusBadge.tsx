@@ -52,8 +52,8 @@ const statusConfig: Record<StatusType, { label: string; color: string; bgColor: 
   },
   loading: {
     label: 'Checking Status...',
-    color: 'text-gray-500 dark:text-gray-400',
-    bgColor: 'bg-gray-100 dark:bg-gray-800',
+    color: 'text-subtle',
+    bgColor: 'bg-surface-muted',
     icon: (
       <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -103,18 +103,18 @@ export function ServiceStatus({ name, status, uptime, responseTime }: ServiceSta
   const config = statusConfig[status]
 
   return (
-    <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-800 rounded-lg">
+    <div className="flex items-center justify-between p-4 border border-border rounded-lg">
       <div className="flex items-center gap-3">
         <div className={`p-1 rounded-full ${config.bgColor}`}>
           {config.icon}
         </div>
         <div>
-          <p className="font-medium text-gray-900 dark:text-gray-100">{name}</p>
+          <p className="font-medium text-foreground">{name}</p>
           <p className={`text-sm ${config.color}`}>{config.label}</p>
         </div>
       </div>
       {(uptime || responseTime) && (
-        <div className="text-right text-sm text-gray-500 dark:text-gray-400">
+        <div className="text-right text-sm text-subtle">
           {uptime && <p>Uptime: {uptime}</p>}
           {responseTime && <p>Response: {responseTime}</p>}
         </div>

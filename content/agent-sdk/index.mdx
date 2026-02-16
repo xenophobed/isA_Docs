@@ -17,6 +17,13 @@ async for msg in query("Hello, world!"):
     print(msg.content, end="" if msg.is_text else "\n")
 ```
 
+## Latest Updates (2026-02-14)
+
+- **Audit hardening completed** - all tracked security audit findings (issues `#13` to `#26`) were resolved in `isa_agent_sdk`.
+- **Swarm + DAG workflows expanded** - production-ready dynamic handoffs (`[HANDOFF:...]`) and dependency-ordered DAG execution are now documented and tested.
+- **A2A support stabilized** - Agent Card + JSON-RPC adapters are now part of the standard integration path.
+- **Test coverage increased** - SDK test suite is at **234 passing tests**, including dedicated audit regression coverage.
+
 ## Core Concepts
 
 ### Streaming vs Single Mode
@@ -132,6 +139,93 @@ trigger_id = await register_trigger(
 
 [Triggers documentation](./triggers)
 
+### A2A (Agent-to-Agent)
+
+Run interoperable agent-to-agent communication using Agent Card discovery and JSON-RPC endpoints.
+
+[A2A guide](./a2a)
+
+### Steward (Personal)
+
+The agent acts as a personal steward, managing tasks, calendar, and proactive automation:
+
+```python
+# Via agent conversation
+"Create a todo task called 'Review PR' with high priority"
+"What's on my calendar tomorrow?"
+"Alert me when Bitcoin drops 5%"
+
+# Programmatic access
+options = ISAAgentOptions(
+    user_id="user-123",
+    allowed_tools=[
+        "create_task", "list_tasks", "complete_task",
+        "create_calendar_event", "get_upcoming_events",
+        "register_price_alert", "list_triggers"
+    ]
+)
+```
+
+Steward capabilities:
+- **Task Management** (9 tools) - TODO, reminders, tracking
+- **Calendar** (9 tools) - Events, scheduling, sync
+- **Event Triggers** (6 tools) - Alerts, automation
+
+[Steward documentation](./steward)
+
+### Structured Outputs
+
+Get validated JSON matching your schema:
+
+```python
+from pydantic import BaseModel
+from isa_agent_sdk import query, ISAAgentOptions, OutputFormat
+
+class Recipe(BaseModel):
+    name: str
+    ingredients: list[str]
+    prep_time_minutes: int
+
+async for msg in query(
+    "Find a chocolate chip cookie recipe",
+    options=ISAAgentOptions(
+        output_format=OutputFormat.from_pydantic(Recipe)
+    )
+):
+    if msg.has_structured_output:
+        recipe = msg.parse(Recipe)
+        print(f"Recipe: {recipe.name}")
+```
+
+[Structured outputs documentation](./structured-outputs)
+
+### Desktop Execution
+
+Route tool execution to a user's local desktop via Pool Manager:
+
+```python
+from isa_agent_sdk import query, ISAAgentOptions, ExecutionEnv
+
+options = ISAAgentOptions(
+    env=ExecutionEnv.DESKTOP,
+    user_id="xenodennis",
+    allowed_tools=["read_file", "write_file", "bash_execute", "glob_files"]
+)
+
+async for msg in query("Find all Python files and search for 'API'", options=options):
+    if msg.is_tool_use:
+        print(f"[Executing on desktop: {msg.tool_name}]")
+    elif msg.is_text:
+        print(msg.content, end="")
+```
+
+The LLM intelligently decides which tools to use, and all tool calls are routed through:
+```
+SDK → Pool Manager → Desktop Agent → Local Filesystem
+```
+
+[Desktop execution documentation](./desktop-execution)
+
 ### Durable Execution
 
 Checkpoint and resume long-running tasks:
@@ -181,6 +275,7 @@ curl -X POST http://localhost:8095/api/v1/apps/{id}/query \
 
 ### Getting Started
 - [Quick Start](./quickstart) - First steps with the SDK
+- [Agent Client](./agent-client) - Bidirectional client & error handling
 - [Streaming](./streaming) - Streaming vs single mode
 
 ### Configuration
@@ -189,7 +284,9 @@ curl -X POST http://localhost:8095/api/v1/apps/{id}/query \
 
 ### Features
 - [Tools](./tools) - Tools & MCP integration
+- [Steward](./steward) - Task, Calendar & Event tools (Personal 管家)
 - [Human-in-the-Loop](./human-in-the-loop) - Approval workflows
+- [Structured Outputs](./structured-outputs) - JSON schema & Pydantic integration
 - [Triggers](./triggers) - Event-based activation
 - [Checkpointing](./checkpointing) - Durable execution
 - [Messages](./messages) - Message types reference
@@ -231,7 +328,32 @@ curl -X POST http://localhost:8095/api/v1/apps/{id}/query \
 | `COLLABORATIVE` | Durable with checkpoints |
 | `PROACTIVE` | Event-driven autonomous |
 
-## HTTP Client
+## Agent Client
+
+The SDK provides two client interfaces:
+
+### ISAAgentClient (Bidirectional)
+
+For interactive multi-turn conversations (Claude SDK compatible):
+
+```python
+from isa_agent_sdk import ISAAgentClient
+
+async with ISAAgentClient() as client:
+    await client.query("Remember the number 42")
+    async for msg in client.receive():
+        print(msg.content)
+
+    # Continue conversation
+    await client.query("What number did I mention?")
+    async for msg in client.receive():
+        print(msg.content)  # Will recall 42
+
+    # Or use convenience method
+    response = await client.ask("What is 2 + 2?")
+```
+
+### ISAAgent (HTTP Client)
 
 For deployed applications:
 
@@ -248,6 +370,8 @@ for event in client.chat.stream(message="Explain AI"):
     if event.is_content:
         print(event.content, end="")
 ```
+
+[Agent Client documentation](./agent-client)
 
 ## Examples
 
@@ -294,6 +418,32 @@ async for msg in query("Process all CSV files in /data", options=options):
     elif msg.is_text:
         print(msg.content, end="")
 ```
+
+## Error Handling
+
+The SDK provides typed errors for precise error handling:
+
+```python
+from isa_agent_sdk import (
+    ISASDKError,        # Base error
+    ConnectionError,    # Service connection failed
+    ToolExecutionError, # Tool failed
+    SessionError,       # Session issues
+    ValidationError,    # Input validation
+)
+
+try:
+    async for msg in query("Do something"):
+        ...
+except ToolExecutionError as e:
+    print(f"Tool {e.tool_name} failed: {e.message}")
+except SessionError as e:
+    print(f"Session {e.session_id} error: {e}")
+except ISASDKError as e:
+    print(f"SDK error: {e}")
+```
+
+[Error classes reference](./agent-client#error-classes)
 
 ## Environment Variables
 

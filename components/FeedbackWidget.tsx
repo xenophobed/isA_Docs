@@ -33,7 +33,7 @@ export function FeedbackWidget() {
 
   if (showThanks) {
     return (
-      <div className="mt-12 pt-6 border-t border-gray-200 dark:border-gray-800">
+      <div className="mt-12 pt-6 border-t border-border">
         <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -45,17 +45,17 @@ export function FeedbackWidget() {
   }
 
   return (
-    <div className="mt-12 pt-6 border-t border-gray-200 dark:border-gray-800">
+    <div className="mt-12 pt-6 border-t border-border">
       {!showForm ? (
         <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-600 dark:text-gray-400">Was this page helpful?</span>
+          <span className="text-sm text-muted">Was this page helpful?</span>
           <div className="flex gap-2">
             <button
               onClick={() => handleFeedback('helpful')}
               className={`flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg border transition-colors ${
                 feedback === 'helpful'
                   ? 'bg-green-50 border-green-300 text-green-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-400'
-                  : 'border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  : 'border-border-strong hover:bg-surface-muted'
               }`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -68,7 +68,7 @@ export function FeedbackWidget() {
               className={`flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg border transition-colors ${
                 feedback === 'not-helpful'
                   ? 'bg-red-50 border-red-300 text-red-700 dark:bg-red-900/30 dark:border-red-700 dark:text-red-400'
-                  : 'border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  : 'border-border-strong hover:bg-surface-muted'
               }`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -80,20 +80,20 @@ export function FeedbackWidget() {
         </div>
       ) : (
         <div className="space-y-3">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-muted">
             Sorry to hear that. How can we improve this page?
           </p>
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="What was missing or unclear?"
-            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 text-sm border border-border-strong rounded-lg bg-surface focus:ring-2 focus:ring-focus-ring focus:border-transparent"
             rows={3}
           />
           <div className="flex gap-2">
             <button
               onClick={handleSubmitComment}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover transition-colors"
             >
               Submit Feedback
             </button>
@@ -102,7 +102,7 @@ export function FeedbackWidget() {
                 setShowForm(false)
                 setFeedback(null)
               }}
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium text-muted hover:bg-surface-muted rounded-lg transition-colors"
             >
               Cancel
             </button>

@@ -57,7 +57,7 @@ export function CodeBlock({ language, children }: CodeBlockProps) {
   return (
     <Tabs.Tab>
       <div className="relative">
-        <span className="absolute top-2 right-2 text-xs text-gray-500 dark:text-gray-400">
+        <span className="absolute top-2 right-2 text-xs text-subtle">
           {icon} {label}
         </span>
         <pre className="language-{language}">
@@ -90,7 +90,7 @@ export function ApiExample({ endpoint, method = 'POST', pythonCode, jsCode, curl
         }`}>
           {method}
         </span>
-        <code className="text-gray-700 dark:text-gray-300">{endpoint}</code>
+        <code className="text-muted">{endpoint}</code>
       </div>
       <Tabs items={['Python', 'JavaScript', 'cURL']}>
         <Tabs.Tab>
