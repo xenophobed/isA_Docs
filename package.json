@@ -5,8 +5,7 @@
   "scripts": {
     "dev": "next dev --port 3001",
     "build": "next build",
-    "start": "next start",
-    "sync": "node scripts/sync-docs.js"
+    "start": "next start"
   },
   "keywords": [
     "isA",
