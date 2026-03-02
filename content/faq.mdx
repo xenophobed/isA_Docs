@@ -9,14 +9,14 @@ Frequently asked questions about the isA platform.
 isA is a complete platform for building, deploying, and scaling AI agents. It includes:
 
 - **Agent SDK** - Python library for building agents
-- **MCP** - 50+ pre-built tools for agents
+- **MCP** - 89+ pre-built tools for agents
 - **Model Service** - Unified LLM gateway
-- **User Services** - 31 microservices for auth, payments, storage
+- **User Services** - 35 microservices for auth, payments, storage
 - **Cloud** - Production-ready Kubernetes infrastructure
 
 ### Is isA open source?
 
-Yes, isA is open source. You can find all repositories at [github.com/isA-platform](https://github.com/isA-platform).
+Yes, isA is open source. You can find all repositories at [github.com/xenoISA](https://github.com/xenoISA).
 
 ### What models does isA support?
 
@@ -46,60 +46,94 @@ pip install isa-agent-sdk
 
 ### How do I create a simple agent?
 
+The fastest way is with `query()` or `ask()`:
+
 ```python
-from isa_agent_sdk import Agent
+from isa_agent_sdk import query, ask
+
+# Streaming (recommended)
+async for msg in query("What is 2+2?"):
+    if msg.is_text:
+        print(msg.content, end="")
+
+# One-shot (returns final text)
+response = await ask("What is 2+2?")
+print(response)
+```
+
+Or use the `Agent` class for reusable agents:
+
+```python
+from isa_agent_sdk import Agent, ISAAgentOptions
 
 agent = Agent(
     name="my-agent",
-    model="claude-sonnet-4-20250514",
-    tools=["web_search", "calculator"]
+    options=ISAAgentOptions(
+        allowed_tools=["web_search", "calculator"],
+        model="claude-sonnet-4-20250514",
+    )
 )
 
-response = await agent.run("What is 2+2?")
+result = await agent.run("What is 2+2?")
+print(result.text)
 ```
 
 ### Can agents remember previous conversations?
 
-Yes, use the memory feature:
+Yes, use `session_id` to maintain context across calls:
 
 ```python
-agent = Agent(
-    name="my-agent",
-    memory={"type": "persistent", "store": "redis"}
-)
+from isa_agent_sdk import query
+
+async for msg in query("My name is Alice", session_id="session-123"):
+    print(msg.content, end="")
+
+# Later, same session resumes context
+async for msg in query("What's my name?", session_id="session-123"):
+    print(msg.content, end="")  # "Your name is Alice"
 ```
+
+See [Memory & State](/agent-sdk/memory) for persistent memory backends (Redis, PostgreSQL, Qdrant).
 
 ### How do I add custom tools?
 
 ```python
-from isa_agent_sdk import tool
+from isa_agent_sdk import Agent, ISAAgentOptions, tool
 
 @tool
 def my_custom_tool(query: str) -> str:
     """Search my database."""
     return database.search(query)
 
-agent = Agent(tools=[my_custom_tool])
+agent = Agent(
+    name="custom-agent",
+    options=ISAAgentOptions(tools=[my_custom_tool])
+)
 ```
 
 ### Can I use multiple models in one agent?
 
-Yes, use the router:
+Yes, specify the model in options or per-call:
 
 ```python
-agent = Agent(
-    model={
-        "router": "cost-optimized",
-        "models": ["claude-sonnet-4-20250514", "gpt-4o-mini"]
-    }
-)
+from isa_agent_sdk import query
+
+# Use a specific model
+async for msg in query("Complex reasoning task", model="claude-opus-4-20250514"):
+    print(msg.content, end="")
+
+# Or configure in options
+from isa_agent_sdk import ISAAgentOptions
+options = ISAAgentOptions(model="gpt-4o-mini")
+async for msg in query("Quick task", options=options):
+    print(msg.content, end="")
 ```
 
 ## MCP Tools
 
 ### What tools are available?
 
-Over 50 tools across categories:
+Over 89 tools across categories:
 
 - **Search**: web_search, image_search, news_search
 - **Files**: file_read, file_write, file_list, file_delete
@@ -204,7 +238,7 @@ Self-hosted deployments inherit your compliance posture. Cloud-hosted (coming so
 ### Tools not working?
 
 1. Verify tool is installed: `isa tools list`
-2. Check MCP service: `curl http://localhost:8301/health`
+2. Check MCP service: `curl http://localhost:8081/health`
 3. Review tool permissions
 
 ### Slow responses?
@@ -223,13 +257,13 @@ Self-hosted deployments inherit your compliance posture. Cloud-hosted (coming so
 
 ### Where can I get support?
 
-- [GitHub Issues](https://github.com/isA-platform/issues) - Bug reports
+- [GitHub Issues](https://github.com/xenoISA/issues) - Bug reports
 - [Discord](https://discord.gg/isa) - Community chat
 - [Documentation](/getting-started) - Guides and references
 
 ### How do I report a bug?
 
-1. Search existing [issues](https://github.com/isA-platform/issues)
+1. Search existing [issues](https://github.com/xenoISA/issues)
 2. Create a new issue with:
    - isA version
    - Steps to reproduce
@@ -238,7 +272,7 @@ Self-hosted deployments inherit your compliance posture. Cloud-hosted (coming so
 
 ### How do I request a feature?
 
-Open a [GitHub Discussion](https://github.com/isA-platform/discussions) with:
+Open a [GitHub Discussion](https://github.com/xenoISA/discussions) with:
 
 - Use case description
 - Proposed solution

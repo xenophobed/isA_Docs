@@ -11,7 +11,7 @@ export const metadata = {
     default: 'isA Platform Documentation',
     template: '%s | isA Docs'
   },
-  description: 'Build, deploy, and scale intelligent AI agents with the complete isA platform. Agent SDK, 50+ MCP tools, Model gateway, and production-ready infrastructure.',
+  description: 'Build, deploy, and scale intelligent AI agents with the complete isA platform. Agent SDK, 89+ MCP tools, Model gateway, and production-ready infrastructure.',
   keywords: ['AI agents', 'LLM', 'Agent SDK', 'MCP', 'Kubernetes', 'AI platform'],
   authors: [{ name: 'isA Platform' }],
   openGraph: {
@@ -47,7 +47,7 @@ const FooterContent = () => (
       </div>
       <div className="flex items-center gap-6">
         <a
-          href="https://github.com/isA-platform"
+          href="https://github.com/xenoISA"
           target="_blank"
           rel="noopener noreferrer"
           className="text-sm text-muted hover:text-foreground"
@@ -90,14 +90,14 @@ export default async function RootLayout({
           navbar={
             <Navbar
               logo={<Logo />}
-              projectLink="https://github.com/isA-platform"
+              projectLink="https://github.com/xenoISA"
             >
               <ThemeToggle />
             </Navbar>
           }
           footer={<Footer><FooterContent /></Footer>}
           pageMap={pageMap}
-          docsRepositoryBase="https://github.com/isA-platform/isA_Docs/tree/main/content"
+          docsRepositoryBase="https://github.com/xenoISA/isA_Docs/tree/main/content"
           editLink="Edit this page on GitHub"
           search={<AISearch />}
         >
