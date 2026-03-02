@@ -67,43 +67,59 @@ asyncio.run(main())
 Create an agent with access to tools:
 
 ```python
-from isa_agent_sdk import Agent
+from isa_agent_sdk import Agent, ISAAgentOptions
 
 agent = Agent(
     name="research-assistant",
-    model="claude-sonnet-4-20250514",
-    tools=["web_search", "calculator", "code_interpreter"],
-    system_prompt="You are a helpful research assistant."
+    options=ISAAgentOptions(
+        allowed_tools=["web_search", "calculator", "code_interpreter"],
+        model="claude-sonnet-4-20250514",
+        system_prompt="You are a helpful research assistant.",
+    )
 )
 
 async def main():
-    response = await agent.run("Find the latest news about AI and summarize it")
-    print(response.content)
+    result = await agent.run("Find the latest news about AI and summarize it")
+    print(result.text)
 
 import asyncio
 asyncio.run(main())
 ```
 
-### Agent with Memory
-
-Add persistent memory to your agent:
+Or use `query()` directly with convenience parameters:
 
 ```python
-from isa_agent_sdk import Agent
+from isa_agent_sdk import query
 
-agent = Agent(
-    name="personal-assistant",
-    model="claude-sonnet-4-20250514",
-    memory={
-        "type": "persistent",
-        "store": "redis"  # or "postgres", "qdrant"
-    }
-)
+async def main():
+    async for msg in query(
+        "Find the latest news about AI",
+        allowed_tools=["web_search"],
+    ):
+        if msg.is_text:
+            print(msg.content, end="")
 
-# The agent remembers previous conversations
-await agent.run("My name is Alice")
-await agent.run("What's my name?")  # "Your name is Alice"
+import asyncio
+asyncio.run(main())
 ```
+
+### Agent with Session Memory
+
+Use `session_id` to maintain context across calls:
+
+```python
+from isa_agent_sdk import query
+
+# First message
+async for msg in query("My name is Alice", session_id="conv-001"):
+    print(msg.content, end="")
+
+# Later — agent remembers the session
+async for msg in query("What's my name?", session_id="conv-001"):
+    print(msg.content, end="")  # "Your name is Alice"
+```
+
+See [Memory & State](/agent-sdk/memory) for persistent backends (Redis, PostgreSQL, Qdrant).
 
 ## Choose Your Path
 
@@ -161,6 +177,6 @@ await agent.run("What's my name?")  # "Your name is Alice"
 ## Next Steps
 
 - [Agent SDK Documentation](/agent-sdk) - Full SDK reference
-- [MCP Tools](/mcp/tools) - Browse 50+ tools
+- [MCP Tools](/mcp/tools) - Browse 89+ tools
 - [Examples](/agent-sdk/examples) - Sample projects
 - [Architecture](/architecture) - Platform overview
