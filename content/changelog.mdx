@@ -5,10 +5,28 @@ All notable changes to the isA platform.
 ## [Unreleased]
 
 ### Added
-- isA Cloud documentation with gRPC services, APISIX, Consul
-- User Services documentation for 35 microservices
-- Data platform documentation with RAG patterns
-- Unified documentation site with Nextra
+
+#### Agent SDK
+- Subscription proxy system with account pool rotation, cooldown, and usage alerts (#119-#126)
+- Inter-graph messaging for agent-to-agent communication (#109)
+- AgentLifecycle for long-running proactive agents (#108)
+- GenerationClient and Vibe generation pipeline (#107)
+- AgentTemplateStore with versioning and CRUD (#106)
+- Writer/Reviewer pattern with independent review context (#105)
+- Loop detection for stuck agents (#104)
+- Runtime observability with Prometheus metrics and structured logging (#103)
+
+#### OS Services
+- Pool Manager executor state persistence across restarts (#95-#100)
+- Code deployment subsystem merged into Pool Manager (#101)
+- Tiered compute pricing plans (#74)
+- Volume mount and network_mode support for Cloud OS backends (#94)
+
+### Fixed
+
+#### Agent SDK
+- PoolManagerClient endpoint and payload inconsistency (#114)
+- Stripped OPENAI_API_KEY from subprocess environments (#125)
 
 ---
 
@@ -46,6 +64,128 @@ All notable changes to the isA platform.
 
 ### Fixed
 - Corrected stale Model cache endpoint examples to match current service behavior.
+
+---
+
+## [0.5.5] - 2026-02-06
+
+### Added
+
+#### Agent SDK
+- Complete voice feature suite with audio buffer, dictation rewriter, and voice orchestrator (#56-#61)
+- Team delegation module for multi-agent coordination
+- TLS/mTLS support for inter-service communication (#101)
+- Per-user tier-based rate limiting (#99)
+- Docker CI/CD pipeline with GitHub Actions (#97)
+
+#### MCP
+- Hybrid multi-tenant platform with org-scoped isolation (#1)
+- Marketplace HTTP API with skill installation endpoints (#51-#53)
+- Aggregator REST endpoints for external MCP server federation
+- Comprehensive security, multi-tenant, and reliability documentation
+
+#### Model Service
+- Realtime session gateway with WebSocket streaming (#73)
+- Voice privacy filter and retention modes (#77)
+- Role-based model resolution wired into `/invoke` (#63-#66)
+- Capability-based filtering and cost-aware ranking (#67-#72)
+- Model selection explain endpoint for observability (#69)
+- Latency tracking with soft constraints and feedback loop (#70-#72)
+- OpenRouter as LLM provider (#59, #62)
+- Anthropic and subscription proxy providers
+- Generic ML prediction service with 2-tier Ray backend
+
+#### User Services
+- X-API-Key authentication for core services (#4)
+- User-managed API key lifecycle (#1)
+- Dependency injection infrastructure across 9 services
+- Loki centralized logging integration
+- Event-driven architecture with async service clients
+
+#### Cloud
+- Loki + Grafana observability stack with AsyncLokiClient (#47)
+- Terraform modules and environment configs (#40)
+- NetworkPolicies for namespace isolation (#8)
+- SAST and dependency scanning CI workflow (#12)
+- Claude skills for cluster ops, backup/restore, and service management
+
+#### OS Services
+- Desktop OS transformed into local-first AI agent with isA_Agent_SDK (#88)
+- Telegram channel integration with webhook mode and media support (#31-#36)
+- Channels runtime with ingest/dispatch/retry/dead-letter workers (#28-#29)
+- DDoS protection and network security (#78)
+- Rate limiting and API security for Pool Manager (#78)
+- CLI renamed from `isa-desktop` to `isamate` (#93)
+
+#### Data
+- Initial release with data lake, RAG pipelines, and file processing
+
+### Changed
+
+#### Cloud
+- Removed all Go code — platform is now pure Python
+- Replaced gRPC layer with direct native Python clients
+- Rewrote Makefile with docker-compose for local dev (#38)
+- Removed Consul Discovery from APISIX in favor of direct routing
+
+#### Model Service
+- Major refactor to standalone OpenAI-compatible client (v0.5.0)
+- Increased default timeouts from 30s to 300s
+- Removed duplicate CORS middleware, deferred to APISIX gateway (#111)
+
+### Fixed
+
+#### Agent SDK
+- Concurrency and thread-safety issues in voice feature (3 critical fixes)
+- Empty responses after tool execution (#12)
+- Cascade failures optimized from O(n²) to O(1) (#53)
+- `@tool` pipeline crash, `tools=` param, and name resolution (#74)
+- Pydantic V1 to V2 migration across all models
+
+#### MCP
+- Auth bypass vulnerabilities (#3, #6, #12, #21)
+- Tool execution injection and path traversal (#4, #13, #14)
+- Bash command injection hardening (#34)
+- SSE injection prevention (#64-#70)
+- Qdrant retry logic and vector ID overflow protection (#16, #17)
+- Session leak fixes and ExceptionGroup unwrapping (#9, #11, #15)
+
+#### Model Service
+- Critical, high, medium, and low severity security audit fixes (~30 issues)
+- Restricted pickle unpickler and sensitive header redaction (#110)
+- HMAC integrity checks on model save/load (#10)
+- DeepSeek-R1 streaming tool call implementation
+
+#### User Services
+- P0 critical auth vulnerabilities (#18-#22)
+- P1 high-severity security vulnerabilities (#23-#29)
+- P2/P3 medium and low severity issues (#30-#43)
+- SDK-backend mismatches and billing resilience (#7 critical fixes)
+
+#### Cloud
+- Hardcoded passwords removed from Kubernetes secrets
+- SQL injection prevention with identifier validation (#4)
+- Pod security context added to Helm chart (#5)
+- CORS wildcard replaced with explicit origin allowlist (#7)
+- NATS consumer resilience and JetStream message acknowledgment (#18, #26-#27)
+
+---
+
+## [0.5.1] - 2025-06-15
+
+### Added
+- MCP tool server initial release with LangGraph agent integration
+- Docker deployment and Railway hosting support
+- Event sourcing and memory services
+- Web tools, data graph, and digital graph services
+- Model service Triton integration and Replicate/Gemma/Whisper providers
+- OS web automation with Browserbase element extraction
+- Python REPL and Cloud OS services with Kubernetes deployment
+- MQTT and Device Management services for IoT
+
+### Fixed
+- MCP server crash and exposed secrets remediation
+- Model service tool calling optimization and adapter fixes
 
 ---
 
