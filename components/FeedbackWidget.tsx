@@ -10,23 +10,30 @@ export function FeedbackWidget() {
   const [showForm, setShowForm] = useState(false)
   const [comment, setComment] = useState('')
 
+  const submitFeedback = (rating: string, feedbackComment?: string) => {
+    fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        page: window.location.pathname,
+        rating,
+        comment: feedbackComment || '',
+      }),
+    }).catch(() => {}) // Fire-and-forget — don't block UX
+  }
+
   const handleFeedback = (type: FeedbackType) => {
     setFeedback(type)
     if (type === 'helpful') {
       setShowThanks(true)
-      // In production, send to analytics
-      console.log('Feedback: helpful', { page: window.location.pathname })
+      submitFeedback('helpful')
     } else {
       setShowForm(true)
     }
   }
 
   const handleSubmitComment = () => {
-    // In production, send to analytics/feedback service
-    console.log('Feedback: not helpful', {
-      page: window.location.pathname,
-      comment
-    })
+    submitFeedback('not-helpful', comment)
     setShowForm(false)
     setShowThanks(true)
   }

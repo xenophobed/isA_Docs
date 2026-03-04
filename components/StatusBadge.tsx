@@ -1,12 +1,12 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import { surfaces } from '../lib/surfaces'
 
-type StatusType = 'operational' | 'degraded' | 'outage' | 'maintenance' | 'loading'
+type StatusType = 'operational' | 'degraded' | 'outage' | 'maintenance'
 
 interface StatusBadgeProps {
-  statusUrl?: string
+  status?: StatusType
   service?: string
 }
 
@@ -51,37 +51,14 @@ const statusConfig: Record<StatusType, { label: string; color: string; bgColor: 
       </svg>
     ),
   },
-  loading: {
-    label: 'Checking Status...',
-    color: 'text-subtle',
-    bgColor: 'bg-surface-muted',
-    icon: (
-      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-      </svg>
-    ),
-  },
 }
 
-export function StatusBadge({ statusUrl, service }: StatusBadgeProps) {
-  const [status, setStatus] = useState<StatusType>('loading')
-
-  useEffect(() => {
-    // In production, fetch from your status page API
-    // For demo, simulate operational status after brief loading
-    const timer = setTimeout(() => {
-      setStatus('operational')
-    }, 1000)
-
-    return () => clearTimeout(timer)
-  }, [statusUrl])
-
+export function StatusBadge({ status = 'operational', service }: StatusBadgeProps) {
   const config = statusConfig[status]
 
   return (
     <a
-      href={statusUrl || surfaces.status}
+      href={surfaces.status}
       target="_blank"
       rel="noopener noreferrer"
       className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${config.bgColor} ${config.color} hover:opacity-80 transition-opacity`}
