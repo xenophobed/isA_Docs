@@ -1,0 +1,154 @@
+# isA Mate
+
+Local-first AI desktop agent with multi-channel access.
+
+## Overview
+
+isA Mate is the default agent application of the isA platform. It runs on the user's machine, providing an AI assistant with full filesystem access, code execution, and system awareness — all while keeping data local.
+
+| Feature | Detail |
+|---------|--------|
+| **Execution** | Local-first — AI reasoning and data stay on-machine |
+| **Interfaces** | CLI, HTTP API, WebSocket, Telegram |
+| **Tools** | 14 desktop tools via isA MCP |
+| **Skills** | Modular capability system with auto-discovery |
+| **Modes** | Reactive, collaborative, proactive |
+
+## Quick Start
+
+```bash
+# Install
+git clone https://github.com/xenoISA/isA_OS.git
+cd isA_OS/isA_Mate
+pip install -e .
+
+# Interactive CLI
+isa-mate cli
+
+# One-shot query
+isa-mate query "list files in my home directory"
+
+# Gateway server
+isa-mate serve
+curl http://127.0.0.1:18789/health
+```
+
+## Architecture
+
+```
+User Interfaces (CLI, HTTP, WebSocket, Telegram)
+                    │
+         Gateway Server (FastAPI, port 18789)
+                    │
+      DesktopAgentRuntime (isA Agent SDK)
+         │              │                │
+      isA_MCP       isA_Model       Pool Manager
+      (Tools)       (LLMs)          (Optional)
+      :8081          :8082            :8090
+```
+
+## Operational Modes
+
+| Mode | Command | Use Case |
+|------|---------|----------|
+| **Gateway** | `isa-mate serve` | HTTP + WebSocket server, multi-client |
+| **Interactive** | `isa-mate cli` | Terminal REPL with streaming |
+| **One-shot** | `isa-mate query "..."` | Scripts, cron jobs, automation |
+| **Doctor** | `isa-mate doctor` | Service health diagnostics |
+| **Legacy** | `isa-mate legacy` | Pool Manager bridge |
+
+## Desktop Tools
+
+14 tools available via MCP:
+
+| Category | Tools |
+|----------|-------|
+| **Files** | `read_file`, `write_file`, `edit_file`, `multi_edit_file` |
+| **Search** | `glob_files`, `grep_search`, `ls_directory` |
+| **Execution** | `bash_execute`, `bash_output`, `kill_shell`, `list_shells` |
+| **Meta** | `discover`, `get_tool_schema`, `execute` |
+
+## Skills System
+
+Skills are modular capabilities defined as `SKILL.md` files with YAML frontmatter:
+
+```yaml
+# ~/.isa/skills/my-skill/SKILL.md
+---
+name: my-skill
+description: Custom automation skill
+triggers:
+  - "automate"
+  - "run my workflow"
+---
+You are a specialist in...
+```
+
+Built-in skills: `desktop-assistant`, `file-manager`, `developer`
+
+Custom skills are auto-discovered from `~/.isa/skills/`.
+
+## Channels
+
+| Channel | Status | Protocol |
+|---------|--------|----------|
+| **Telegram** | Stable | Polling with chat ID allowlist |
+| **Discord** | Planned | — |
+| **Slack** | Planned | — |
+| **WhatsApp** | Planned | — |
+
+## Gateway API
+
+Base URL: `http://127.0.0.1:18789`
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Health check |
+| `GET` | `/v1/tools` | List available tools |
+| `GET` | `/v1/skills` | List loaded skills |
+| `POST` | `/v1/query` | Send a query (non-streaming) |
+| `POST` | `/v1/chat` | Chat with SSE streaming |
+| `WS` | `/ws` | WebSocket connection |
+| `GET` | `/docs` | Swagger UI |
+
+## Security
+
+- Default bind: `127.0.0.1` (localhost-only)
+- Auth auto-enabled when binding to non-localhost
+- Bearer token authentication
+- Dangerous command blocklist
+- Optional sandbox mode
+
+## Configuration
+
+```yaml
+# config.yaml
+gateway:
+  host: 127.0.0.1
+  port: 18789
+
+agent:
+  execution_mode: reactive  # reactive | collaborative | proactive
+
+services:
+  mcp_url: http://localhost:8081
+  model_url: http://localhost:8082
+```
+
+Config resolution: `--config` flag > `ISA_MATE_CONFIG` env > `./config.yaml` > `~/.isa/isa_mate/config.yaml`
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Runtime | Python 3.10+ |
+| Server | FastAPI + Uvicorn |
+| Agent | isA Agent SDK (LangGraph) |
+| Storage | SQLite (session memory) |
+| Streaming | Server-Sent Events |
+
+## Related
+
+- [Agent SDK](/agent-sdk) — Core agent framework
+- [Desktop Execution](/agent-sdk/desktop-execution) — Desktop tool routing
+- [OS Services](/os) — Platform OS layer

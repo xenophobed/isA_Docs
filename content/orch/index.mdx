@@ -1,0 +1,161 @@
+# isA Orch
+
+Unified code index and platform intelligence for the isA ecosystem.
+
+## Overview
+
+isA Orch provides cross-project code intelligence — a single index spanning all 16 isA sub-projects with symbol resolution, call-graph analysis, full-text search, and semantic search. It is the shared intelligence substrate that skills and isa-vibe use for impact analysis, context detection, and TDD routing.
+
+| Feature | Detail |
+|---------|--------|
+| **Index** | All 16 isA projects in one SQLite database |
+| **Search** | FTS5 full-text + optional semantic embeddings |
+| **Impact** | Cross-project call-graph analysis (recursive CTE) |
+| **Languages** | Python (AST), TypeScript/JavaScript (tree-sitter) |
+| **Tests** | 294 tests across unit/component/integration |
+
+## Quick Start
+
+```bash
+# Install
+cd isA_Orch
+pip install -e .
+
+# Index all projects
+isa-orch index
+
+# Search across the platform
+isa-orch search "ToolNode"
+
+# Impact analysis
+isa-orch impact "isa_agent_sdk.nodes.tool_node.ToolNode"
+
+# Platform stats
+isa-orch stats
+```
+
+## Architecture
+
+```
+config/projects.yaml (16 projects)
+         │
+    ProjectRegistry
+         │
+      Indexer  ────→ PythonAST / TreeSitter / Classifier
+         │
+  PlatformIndex (SQLite + FTS5)
+         │
+  LocalEmbeddingIndex (optional, sentence-transformers)
+```
+
+**Database**: `~/Documents/Fun/isA/.isa/code_index.db`
+
+## Core Features
+
+### Multi-Project Symbol Index
+
+All symbols across the platform are indexed with project tags, enabling cross-project queries:
+
+```bash
+# Search in a specific project
+isa-orch search "tool_node" --project isA_Agent_SDK
+
+# Search by symbol kind
+isa-orch search "ToolNode" --kind class
+
+# Semantic search
+isa-orch search "retry logic" --semantic
+```
+
+### Cross-Project Impact Analysis
+
+Find all callers of a symbol, recursively across project boundaries:
+
+```bash
+isa-orch impact "ToolNode" --max-depth 3
+```
+
+Uses a 3-pass edge resolution algorithm:
+1. Exact qualified name match
+2. Short name match within same project
+3. Short name match across all projects
+
+### Incremental Indexing
+
+Only re-indexes changed files (checksum-based):
+
+```bash
+# Full index
+isa-orch index
+
+# Single project
+isa-orch index --project isA_MCP
+
+# With semantic embeddings
+isa-orch index --embeddings
+```
+
+### Project Context Detection
+
+Auto-detects language, framework, test runner, and infrastructure:
+
+```bash
+isa-orch project-context ./isA_Agent_SDK
+```
+
+### Test Scaffold
+
+Creates 5-layer test directory structure for any project:
+
+```bash
+isa-orch test-scaffold ./isA_Agent_SDK
+# Creates: tests/{unit,component,integration,api,smoke}/
+```
+
+## CLI Reference
+
+| Command | Description |
+|---------|-------------|
+| `isa-orch index` | Index all (or `--project`) projects |
+| `isa-orch search <query>` | Full-text search (`--semantic`, `--kind`, `--project`) |
+| `isa-orch impact <symbol>` | Cross-project impact analysis (`--max-depth`) |
+| `isa-orch stats` | Platform-wide index statistics (`--project`) |
+| `isa-orch projects` | List all registered projects |
+| `isa-orch project-context <path>` | Detect project language/framework/infra |
+| `isa-orch test-scaffold <path>` | Create 5-layer test directory structure |
+
+All commands support `--json` for machine-readable output.
+
+## Project Registry
+
+Projects are declared in `config/projects.yaml`:
+
+```yaml
+platform_root: ~/Documents/Fun/isA
+
+projects:
+  isA_Agent_SDK:
+    path: isA_Agent_SDK
+    language: python
+  isA_MCP:
+    path: isA_MCP
+    language: python
+  # ... all 16 projects
+```
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Language | Python 3.11+ |
+| Storage | SQLite with FTS5 |
+| Python parsing | Built-in `ast` module |
+| JS/TS parsing | tree-sitter (optional) |
+| Embeddings | sentence-transformers (optional) |
+| CLI | setuptools entry point |
+
+## Related
+
+- [Architecture](/architecture) — Platform overview
+- [Agent SDK](/agent-sdk) — Core agent framework
+- [Cloud](/cloud) — Deployment infrastructure
