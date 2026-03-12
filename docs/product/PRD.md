@@ -32,26 +32,28 @@ isA_Docs is the **public developer portal** for the isA platform. It is not an i
 
 ## 3. Platform Coverage
 
-The docs must cover all isA projects. Status as of 2026-03-03:
+The docs must cover all isA projects. Status as of 2026-03-12:
 
 | Project | Section | Status | Notes |
 |---------|---------|--------|-------|
 | isA_Agent_SDK | `/agent-sdk` (22 pages) | [Complete] | Comprehensive — 22 pages covering all features |
 | isA_MCP | `/mcp` (15 pages) | [Complete] | Tools, security, multi-tenant, aggregator |
-| isA_Model | `/model` (7 pages) | [Complete] | Inference, voice, caching, training, ML prediction |
-| isA_Cloud | `/cloud` (10 pages) | [Complete] | Infrastructure, gRPC, gateway, CI/CD, ops |
+| isA_Model | `/model` (7 pages) | [Stale] | Missing: fine-tuning/LoRA, dataset API, checkpoint registry |
+| isA_Cloud | `/cloud` (10 pages) | [Stale] | Missing: backup/restore, PDB, security scanning |
 | isA_OS | `/os` (7 pages) | [Complete] | Pool Manager, Cloud OS, Desktop Agent, REPL |
 | isA_Data | `/data` (5 pages) | [Complete] | RAG, data lake, fabric, file processing |
-| isA_user | `/user` (13 pages) | [Complete] | 35 microservices across 7 categories |
+| isA_user | `/user` (13 pages) | [Stale] | Missing: Prometheus /metrics, graceful shutdown, circuit breakers |
 | isA_Agent | `/agents` (4 pages) | [Complete] | Vibe, Creative, Default agents |
 | isA_App_SDK | `/app-sdk` (1 page) | [Complete] | 6-package monorepo overview |
 | isA_Frame | `/frame` (1 page) | [Complete] | EmoFrame smart photo system |
 | isA_Console | `/console` (1 page) | [Complete] | Next.js dashboard |
-| isA_Trade | `/trade` (1 page) | [Complete] | Multi-agent trading system |
+| isA_Trade | `/trade` (1 page) | [Stale] | Missing: approval gates, Prometheus alerts, load testing |
 | isA_Chain | `/chain` (1 page) | [Complete] | Blockchain core |
 | isA_Vibe | via `/agents/vibe` | [Complete] | AI-SDLC orchestration |
-| isA_Mate | — | [Not Started] | Companion services — no docs page exists |
-| isA_Orch | — | [Not Started] | Platform orchestration — no docs page exists |
+| isA_Mate | `/mate` (1 page) | [Complete] | Added in epic #17 |
+| isA_Orch | `/orch` (1 page) | [Complete] | Added in epic #17 |
+| isA_Creative | — | [Not Started] | 36 commits, 0 docs — DAM, brand compliance, visual designer |
+| isA_Marketing | — | [Not Started] | 32 commits, 0 docs — content, SEO, campaigns |
 
 ### Cross-Cutting Pages
 
@@ -246,9 +248,79 @@ A production readiness investigation (2026-03-05) found that the docs site build
 
 ---
 
-## 7. Future Phases (Backlog)
+## 7. Phase 4: Content Sync — Q1 2026 Platform Status
 
-### Phase 4: Developer Experience Polish
+### 7.0 Problem Statement
+
+A discovery audit (2026-03-12) compared documentation against actual project activity over the last 3 months (Dec 2025 – Mar 2026). Across the platform, **1,000+ commits landed** but documentation lagged behind. Two active projects (Creative: 36 commits, Marketing: 32 commits) have **zero documentation**. Several core projects shipped major features (Model fine-tuning, MCP health persistence, Trade approval gates) that are completely undocumented. The changelog's "Unreleased" section is missing work from 13+ projects.
+
+### 7.1 Batch 1: Critical Gaps (P0-P1)
+
+**Requirement**: Every active isA project must have at minimum a documentation page. Safety-critical features must be documented. The changelog must reflect shipped work.
+
+**Acceptance Criteria**:
+- [ ] `content/creative/index.mdx` exists with overview, architecture, features, getting-started
+- [ ] `content/marketing/index.mdx` exists with overview, architecture, features, getting-started
+- [ ] Trade docs cover live trading approval gates, Risk Agent veto, circuit breakers
+- [ ] Changelog "Unreleased" section includes work from all 13+ active projects
+- [ ] Architecture diagram includes Creative, Marketing, and Orch
+- [ ] Platform index lists Creative and Marketing under Products
+
+**Stories**:
+- Add isA_Creative project documentation (P0, docs)
+- Add isA_Marketing project documentation (P0, docs)
+- Document Trade live trading approval gates and risk management (P0, docs)
+- Update changelog with all unreleased cross-project work (P0, docs)
+- Update architecture diagram for Creative, Marketing, Orch (P1, docs)
+- Update platform index to list Creative and Marketing (P1, docs)
+
+### 7.2 Batch 2: Feature Documentation (P1)
+
+**Requirement**: Major shipped features across core projects must have documentation matching their implementation.
+
+**Acceptance Criteria**:
+- [ ] Model docs cover fine-tuning pipeline (LoRA SFT, dataset upload, checkpoint registry, Ollama deploy)
+- [ ] MCP reliability docs cover health failure persistence and connection event tracking
+- [ ] Agent SDK docs cover OAuth transport and macOS Keychain credential management
+- [ ] Trade docs cover Prometheus alerting rules and Locust load testing
+
+**Stories**:
+- Document Model fine-tuning pipeline — LoRA SFT, datasets, checkpoints, Ollama deploy (P1, docs)
+- Document MCP health failure persistence and connection event tracking (P1, docs)
+- Document Agent SDK OAuth transport and Keychain integration (P1, docs)
+- Document Trade Prometheus alerts and load testing baseline (P1, docs)
+
+### 7.3 Batch 3: Polish (P2)
+
+**Requirement**: Secondary documentation gaps across supporting projects should be addressed.
+
+**Acceptance Criteria**:
+- [ ] Model latency-aware routing includes percentile tracking and tuning guide
+- [ ] Agent SDK A2A guide includes heartbeat streaming details
+- [ ] Orch docs cover code index, cross-project search, impact analysis
+- [ ] Cloud ops docs cover backup/restore, PDB templates, security scanning
+- [ ] User Services ops docs cover Prometheus /metrics, graceful shutdown, circuit breakers
+
+**Stories**:
+- Enhance Model latency-aware routing documentation (P2, docs)
+- Document Agent SDK heartbeat streaming in A2A guide (P2, docs)
+- Update Orch docs with code index and cross-project search (P2, docs)
+- Update Cloud operations docs with backup/restore and security scanning (P2, docs)
+- Update User Services operations docs with Prometheus metrics and circuit breakers (P2, docs)
+
+### 7.4 Out of Scope (This Phase)
+
+| Feature | Rationale |
+|---------|-----------|
+| Full CDD contracts for Creative/Marketing | These are initial project pages, not full doc suites |
+| Comprehensive Trade operations manual | Separate future phase — start with safety-critical docs |
+| Automated changelog generation from commits | Separate tooling initiative |
+
+---
+
+## 8. Future Phases (Backlog)
+
+### Phase 5: Developer Experience Polish
 
 - Expected output shown alongside every code example
 - Framework/package-manager variant selectors on install commands (pip/uv/poetry)
@@ -256,7 +328,7 @@ A production readiness investigation (2026-03-05) found that the docs site build
 - Page-level "Edit on GitHub" links
 - Versioned docs (pin docs to SDK version)
 
-### Phase 5: Interactive & Trust
+### Phase 6: Interactive & Trust
 
 - Live API playground with sandboxed backend
 - Per-service status dashboard with uptime history
@@ -264,7 +336,7 @@ A production readiness investigation (2026-03-05) found that the docs site build
 - Developer feedback pipeline (submit → triage → fix → notify)
 - Community contributions workflow
 
-### Phase 6: Scale
+### Phase 7: Scale
 
 - Multi-language docs (JS/TS SDK parity)
 - Auto-generated API reference from OpenAPI/protobuf specs
@@ -291,7 +363,7 @@ A production readiness investigation (2026-03-05) found that the docs site build
 
 | Path | Purpose |
 |------|---------|
-| `content/**/*.mdx` | All documentation content (95 files) |
+| `content/**/*.mdx` | All documentation content (125 files) |
 | `app/layout.tsx` | Root layout with Nextra theme, nav, footer |
 | `app/page.tsx` | Marketing home page |
 | `app/content/[[...mdxPath]]/page.tsx` | Dynamic MDX content router |
@@ -335,7 +407,7 @@ content/
 | Metric | Target | How to Measure |
 |--------|--------|----------------|
 | Content accuracy | 0 contradictions across all pages | Automated grep audits |
-| Platform coverage | 16/16 projects documented | Content directory check |
+| Platform coverage | 18/18 projects documented | Content directory check |
 | Placeholder count | 0 unlinked "Coming Soon" items | Grep audit |
 | Search reliability | < 2s p95 response time | API monitoring |
 | Component functionality | 0 mocked behaviors in production | Code review |
@@ -348,3 +420,4 @@ content/
 |------|--------|--------|
 | 2026-03-03 | isA Team | Initial PRD created from product audit findings |
 | 2026-03-05 | isA Team | Added Phase 3: Production Readiness (14 stories, 3 themes) |
+| 2026-03-12 | isA Team | Added Phase 4: Content Sync (15 stories, 3 batches); fixed stale coverage table; added Creative + Marketing projects |
