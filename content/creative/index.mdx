@@ -1,0 +1,206 @@
+# isA Creative
+
+Multi-agent creative production system with 6 specialized AI agents for automated content creation, brand compliance, and digital asset management.
+
+## Overview
+
+isA Creative is a coordinated multi-agent architecture where specialized agents collaborate to produce brand-consistent creative assets. A single orchestrator process runs all agents in-process via SwarmOrchestrator, following the same pattern as isA Trade.
+
+| Agent | Role |
+|-------|------|
+| **Creative Director** | Central orchestrator — coordinates agents, manages workflows |
+| **Content Creator** | Generates written content (copy, articles, scripts) |
+| **Visual Designer** | AI image generation via ComfyUI, layout composition |
+| **Copy Editor** | Reviews and refines written content for quality and tone |
+| **Brand Strategist** | Ensures alignment with brand guidelines and strategy |
+| **DAM Manager** | Digital Asset Management — storage, tagging, search |
+| **Design System Agent** | Guardian agent with **veto power** — enforces design system compliance |
+
+## Quick Start
+
+```bash
+# Install
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+# Start infrastructure
+docker-compose up -d  # PostgreSQL, Redis, NATS, MinIO, Qdrant
+
+# Start the orchestrator (all agents run in-process)
+uvicorn src.main:app --port 8260 --reload
+```
+
+The API is available at `http://localhost:8260`. All agents run within the single orchestrator process — no separate ports needed.
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                   Client Applications                    │
+│              REST / WebSocket / A2A Protocol              │
+└────────────────────────┬────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────┐
+│          Creative Director (Port 8260)                   │
+│     Orchestrates workflows, coordinates all agents       │
+│     Workflow Engine • Decision Engine • Event Handlers   │
+└──┬──────┬──────────┬──────────┬──────────┬──────────┬───┘
+   ↓      ↓          ↓          ↓          ↓          ↓
+┌──────┐┌────────┐┌────────┐┌────────┐┌────────┐┌────────┐
+│ DAM  ││Content ││Visual  ││ Copy   ││ Brand  ││Design  │
+│Mngr  ││Creator ││Designer││ Editor ││Strtgst ││System  │
+│      ││        ││        ││        ││        ││GUARDIAN │
+│Assets││Drafts  ││Images  ││Polish  ││Strategy││ VETO   │
+│Tags  ││Scripts ││Layouts ││Tone    ││Align   ││POWER   │
+│Search││Copy    ││ComfyUI ││Grammar ││Guide   ││Validate│
+└──────┘└────────┘└────────┘└────────┘└────────┘└────────┘
+   │         │          │         │         │         │
+   └─────────┴──────────┼─────────┴─────────┴─────────┘
+                        ↓
+┌─────────────────────────────────────────────────────────┐
+│                   Infrastructure                         │
+│  PostgreSQL • Redis • NATS • MinIO (S3) • Qdrant (Vec)  │
+└─────────────────────────────────────────────────────────┘
+                        ↓
+┌─────────────────────────────────────────────────────────┐
+│                 External Engines                         │
+│  ComfyUI (Image Gen) • Remotion (Video) • TTS Service   │
+│  GPU Cluster (A100/H100) • AWS Lambda (Render Farm)     │
+└─────────────────────────────────────────────────────────┘
+```
+
+## Key Features
+
+### Digital Asset Management (DAM)
+
+The DAM Manager provides centralized asset storage and retrieval backed by MinIO (S3-compatible) and Qdrant vector search:
+
+- **Asset storage** — Upload, version, and organize creative assets in S3-compatible object storage
+- **Auto-tagging** — AI-powered metadata extraction and classification
+- **Semantic search** — Vector-based asset search using Qdrant embeddings
+- **Asset lifecycle** — Track asset versions, usage, and expiration
+
+### Brand Compliance
+
+The Design System Agent acts as a guardian with veto power, enforcing brand standards across all outputs:
+
+- **Color validation** — Ensures palette adherence to brand guidelines
+- **Typography checks** — Verifies font usage, sizing, and hierarchy
+- **Layout validation** — Confirms spacing, grid alignment, and composition rules
+- **Accessibility validation** — WCAG compliance checks on generated content
+
+### Visual Design
+
+The Visual Designer generates and composes visual content using AI:
+
+- **AI image generation** — ComfyUI integration with SDXL, FLUX, and HunyuanVideo models
+- **Layout composition** — Programmatic layout engine for combining visual elements
+- **ControlNet guidance** — Structural control via pose, depth, and edge maps
+- **Style transfer** — IP-Adapter and LoRA support for consistent brand aesthetics
+
+### Content Production
+
+End-to-end content creation pipeline across multiple media types:
+
+- **Video composition** — Remotion-based video rendering with React components and AWS Lambda render farm
+- **Text-to-speech** — Multi-provider TTS (Chatterbox, ElevenLabs, Kokoro) with voice cloning
+- **Written content** — AI-generated copy, articles, and scripts with editorial review
+- **Bulk operations** — Batch processing for high-volume creative production
+
+### Content Safety
+
+Multi-layer content moderation pipeline:
+
+- **Input filtering** — Block unsafe prompts before generation via text classifier and blocklist
+- **Embedding guard** — Prevent semantic prompt injection with PromptGuard vectors
+- **Output scanning** — Vision API and classifier verification of generated content
+- **Human review queue** — Escalation path for edge cases with moderate confidence scores
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/workflows` | POST | Create a new creative workflow |
+| `/api/v1/workflows/{id}` | GET | Get workflow status and progress |
+| `/api/v1/workflows/{id}/result` | GET | Retrieve completed workflow output |
+| `/api/v1/workflows/{id}/stream` | GET | Stream workflow events (SSE) |
+| `/api/v1/events/publish` | POST | Publish cross-project events |
+| `/a2a` | POST | Agent-to-Agent protocol endpoint |
+| `/.well-known/agent-card.json` | GET | A2A agent discovery card |
+
+## Agent Capabilities
+
+### Content Creator
+
+- Generates written content from creative briefs
+- Produces multiple content variations with scoring
+- Supports articles, ad copy, social posts, scripts, and more
+
+### Visual Designer
+
+- AI image generation via ComfyUI workflows
+- Layout composition with programmatic layout engine
+- Supports ControlNet, LoRA, and IP-Adapter for style control
+- Handles SDXL, FLUX, and HunyuanVideo model checkpoints
+
+### Copy Editor
+
+- Grammar, tone, and style review
+- Brand voice consistency checks
+- Readability scoring and improvement suggestions
+
+### Brand Strategist
+
+- Brand guideline alignment verification
+- Campaign strategy recommendations
+- Audience targeting and messaging consistency
+
+### DAM Manager
+
+- S3-compatible storage via MinIO
+- Vector-powered semantic asset search via Qdrant
+- Automated tagging, categorization, and metadata management
+
+### Design System Agent (Guardian)
+
+- **Veto power** over non-compliant outputs
+- Color, typography, layout, and accessibility validation
+- Quality gate enforcement via QualityGateRunner
+
+## Tech Stack
+
+| Tool | Purpose |
+|------|---------|
+| Python 3.11+ | Language |
+| FastAPI | HTTP service and API |
+| isA Agent SDK | Agent framework (SwarmOrchestrator) |
+| ComfyUI | AI image generation engine |
+| Remotion | React-based video composition |
+| PostgreSQL | Workflow state, asset metadata |
+| Redis | Cache, sessions |
+| NATS | Cross-project event messaging |
+| MinIO | S3-compatible object storage (DAM) |
+| Qdrant | Vector search for asset embeddings |
+| Pillow | Image processing |
+| Pydantic v2 | Data validation and contracts |
+
+## Infrastructure
+
+All infrastructure runs in the local KIND cluster (`isa-creative` namespace):
+
+```bash
+# Start infrastructure
+docker-compose up -d
+
+# Verify services
+curl http://localhost:8260/health
+```
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| Orchestrator | 8260 | Creative Director API |
+| PostgreSQL | 5432 | Relational storage |
+| Redis | 6379 | Cache and sessions |
+| NATS | 4222 | Event messaging |
+| MinIO | 9000 | Object storage |
+| Qdrant | 6333 | Vector database |

@@ -23,6 +23,7 @@ export default {
   },
   trade: 'Trade',
   chain: 'Chain',
+  creative: 'Creative',
   frame: 'Frame',
   '-----': {
     type: 'separator',
