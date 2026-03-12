@@ -25,6 +25,7 @@ export default {
   chain: 'Chain',
   creative: 'Creative',
   frame: 'Frame',
+  marketing: 'Marketing',
   '-----': {
     type: 'separator',
     title: 'Learn'
