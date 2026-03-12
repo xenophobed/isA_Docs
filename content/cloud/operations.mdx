@@ -6,10 +6,13 @@ Scripts, monitoring, backup, and operational procedures.
 
 Operational tools include:
 
-- **Backup/Restore** - Data protection
+- **Backup/Restore** - Data protection for all 8 data stores
 - **Port Forwarding** - Local access
 - **Monitoring** - Grafana, Loki, Prometheus
 - **Debugging** - Logs, traces, health checks
+- **PodDisruptionBudgets** - Safe rolling updates
+- **Security Scanning** - CI-integrated vulnerability detection
+- **Secret Management** - Vault + External Secrets Operator
 
 ## Scripts
 
@@ -39,23 +42,126 @@ Operational tools include:
 | Qdrant | 6333 |
 | Grafana | 3000 |
 | Loki | 3100 |
+| Vault | 8200 |
 
 ## Backup
 
-### Cluster Backup
+The platform provides two tiers of backup tooling: **automated scripts** that back up all 8 data stores in a single run, and **per-service manual commands** for targeted operations.
+
+### Full Cluster Backup (All 8 Stores)
 
 ```bash
+# Back up everything: PostgreSQL, Redis, Qdrant, Neo4j, MinIO, Consul, NATS, MQTT
 ./scripts/backup-cluster-data.sh
+
+# Custom backup location
+./scripts/backup-cluster-data.sh /path/to/backup
+
+# Specify cluster name
+KIND_CLUSTER=isa-cloud-staging ./scripts/backup-cluster-data.sh
 ```
 
-Backs up:
-- PostgreSQL databases
-- Redis RDB snapshots
-- MinIO buckets
-- Neo4j databases
-- Qdrant collections
+The script creates timestamped directories under `backups/` with subdirectories for each store. It handles pod discovery across different Helm chart naming conventions and uses port-forwarding for services that require API access (Qdrant, MinIO, NATS, Consul).
 
-### Manual Backup
+Stores backed up:
+- **PostgreSQL** - `pg_dumpall` (full) + per-database `pg_dump -Fc` (custom format)
+- **Redis** - BGSAVE trigger + RDB file copy
+- **Qdrant** - Per-collection snapshot via REST API
+- **Neo4j** - `neo4j-admin database dump`
+- **MinIO** - `mc mirror` of all buckets
+- **Consul** - Atomic snapshot via `/v1/snapshot` API (KV + service catalog)
+- **NATS** - JetStream stream configs + consumer definitions via NATS CLI
+- **MQTT** - Mosquitto persistence DB file (`mosquitto.db`)
+
+### NATS JetStream Backup
+
+NATS JetStream stores stream configurations and consumer definitions. The backup captures both:
+
+```bash
+# Using the NATS CLI (preferred)
+nats stream list --json > streams.json
+
+# Per-stream config export
+for stream in $(nats stream list --json | jq -r '.[].config.name'); do
+  nats stream info "$stream" --json > "nats/stream_${stream}.json"
+  # Consumer configs for each stream
+  for consumer in $(nats consumer list "$stream" --json | jq -r '.[].config.durable_name // empty'); do
+    nats consumer info "$stream" "$consumer" --json > "nats/consumer_${stream}_${consumer}.json"
+  done
+done
+```
+
+Alternatively, back up the JetStream data directory directly:
+
+```bash
+kubectl exec -n isa-cloud-staging deploy/nats -- \
+  tar czf /tmp/jetstream.tar.gz /data/jetstream
+
+kubectl cp isa-cloud-staging/nats-0:/tmp/jetstream.tar.gz \
+  ./nats-backup-$(date +%Y%m%d).tar.gz
+```
+
+### Consul KV Backup
+
+Consul supports two backup methods: atomic snapshots (preferred) and KV JSON export (fallback).
+
+```bash
+# Atomic snapshot (captures KV + service catalog + ACLs)
+consul snapshot save /tmp/consul-backup.snap
+
+# Or via the HTTP API
+curl -sf -o consul-snapshot.snap http://localhost:8500/v1/snapshot
+
+# Fallback: KV-only export as JSON
+consul kv export > consul-kv-$(date +%Y%m%d).json
+```
+
+### MQTT Retained Messages Backup
+
+For Mosquitto brokers, the persistence database file contains retained messages:
+
+```bash
+kubectl cp isa-cloud-staging/<mosquitto-pod>:/mosquitto/data/mosquitto.db \
+  ./mqtt-backup-$(date +%Y%m%d)/mosquitto.db
+```
+
+### PostgreSQL CronJob Backup (Production)
+
+Production uses a Kubernetes CronJob (`postgresql-backup`) for automated daily backups. The manifest is at `deployments/kubernetes/production/manifests/postgresql-backup.yaml`.
+
+**Schedule:** Daily at 2:00 AM UTC, with a 7-day retention window.
+
+```yaml
+# Key CronJob configuration
+spec:
+  schedule: "0 2 * * *"          # Daily at 2 AM UTC
+  concurrencyPolicy: Forbid      # Never run two backups at once
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 3
+```
+
+The CronJob runs `pg_dumpall` (compressed) plus per-database custom-format dumps to a 100Gi PVC (`postgresql-backup-data`). It also writes a `latest.json` metadata file and prunes backups older than the retention window.
+
+A companion **verification CronJob** (`postgresql-backup-verify`) runs weekly on Sundays at 3:30 AM UTC. It checks:
+- Backup file exists and is non-empty
+- Valid gzip integrity
+- SQL content headers are present
+- Backup freshness (must be less than 26 hours old)
+
+**Restore from CronJob backups:**
+
+```bash
+# Full restore (latest)
+kubectl exec -it postgresql-backup-pod -- bash /scripts/restore.sh
+
+# Restore specific timestamp
+kubectl exec -it postgresql-backup-pod -- bash /scripts/restore.sh pgdump_20260309_020000
+
+# Restore single database (uses pg_restore with parallel jobs)
+kubectl exec -it postgresql-backup-pod -- bash /scripts/restore.sh --db isa_production
+```
+
+### Manual Backup (Individual Services)
 
 ```bash
 # PostgreSQL
@@ -72,10 +178,206 @@ mc mirror minio/bucket ./backup/bucket
 
 ## Restore
 
-### Cluster Restore
+### Full Cluster Restore
 
 ```bash
 ./scripts/restore-cluster-data.sh backups/cluster-backup-20260114-120000
+```
+
+The restore script waits for infrastructure pods to be ready before restoring. Each store is restored in order: PostgreSQL, MinIO, Qdrant, Neo4j, Redis, NATS, Consul, MQTT.
+
+### NATS JetStream Restore
+
+Stream and consumer configurations are restored from the JSON backups:
+
+```bash
+# Restore stream configs
+for stream_file in nats/stream_*.json; do
+  STREAM_NAME=$(jq -r '.config.name' "$stream_file")
+  jq '.config' "$stream_file" | nats stream add "$STREAM_NAME" --config /dev/stdin
+done
+
+# Restore consumer configs
+for consumer_file in nats/consumer_*.json; do
+  STREAM_NAME=$(jq -r '.stream_name' "$consumer_file")
+  CONSUMER_NAME=$(jq -r '.config.durable_name' "$consumer_file")
+  jq '.config' "$consumer_file" | nats consumer add "$STREAM_NAME" "$CONSUMER_NAME" --config /dev/stdin
+done
+```
+
+Or restore from a data directory backup:
+
+```bash
+kubectl cp nats-backup.tar.gz isa-cloud-staging/nats-0:/tmp/
+kubectl exec -n isa-cloud-staging deploy/nats -- \
+  tar xzf /tmp/nats-backup.tar.gz -C /
+kubectl rollout restart statefulset/nats -n isa-cloud-staging
+```
+
+### Consul KV Restore
+
+```bash
+# From atomic snapshot (preferred)
+curl -sf -X PUT --data-binary @consul-snapshot.snap http://localhost:8500/v1/snapshot
+
+# Or via consul CLI
+consul snapshot restore /tmp/consul-backup.snap
+
+# From KV JSON export
+consul kv import @consul-kv-export.json
+```
+
+### MQTT Restore
+
+```bash
+# Copy persistence file back and restart the broker
+kubectl cp mqtt-backup/mosquitto.db \
+  isa-cloud-staging/<mosquitto-pod>:/mosquitto/data/mosquitto.db
+kubectl rollout restart deployment/mosquitto -n isa-cloud-staging
+```
+
+## PodDisruptionBudgets
+
+The `isa-service` Helm chart includes a PodDisruptionBudget (PDB) template that is automatically enabled for services with more than one replica. This ensures safe rolling updates and node drains.
+
+**Template:** `deployments/charts/isa-service/templates/pdb.yaml`
+
+```yaml
+# Enabled automatically when replicas > 1
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1        # or use maxUnavailable instead
+  # maxUnavailable: 1    # alternative: allow at most 1 pod down
+```
+
+The PDB is only created when `podDisruptionBudget.enabled` is `true` and the service has more than one replica (computed from `replicas` or `autoscaling.minReplicas`). You can configure either `minAvailable` or `maxUnavailable`; if `minAvailable` is set it takes precedence.
+
+**Usage in service values:**
+
+```yaml
+# values.yaml for a service
+name: auth-service
+namespace: isa-cloud-production
+replicas: 3
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2      # Always keep at least 2 pods running during disruptions
+```
+
+## Security Scanning
+
+The platform runs automated security scans in CI via the `.github/workflows/security-scan.yaml` workflow. It triggers on pushes to `main`, pull requests, and on a weekly cron schedule (Mondays at 9:00 AM UTC).
+
+### Scan Layers
+
+| Scan | Tool | What It Checks |
+|------|------|----------------|
+| **Secrets** | gitleaks | Leaked credentials, API keys, tokens in git history |
+| **Python Dependencies** | pip-audit | Known CVEs in Python packages |
+| **Python SAST** | bandit | Common security anti-patterns in Python code |
+| **Go Dependencies** | govulncheck | Known vulnerabilities in Go modules |
+| **Go SAST** | gosec | Security issues in Go source code |
+
+### How It Works
+
+The workflow is composed of four jobs:
+
+1. **secrets-scan** - Runs gitleaks against the full git history to detect leaked secrets.
+2. **python-security** - Runs `pip-audit` on `isA_common/requirements.txt` for dependency vulnerabilities, then `bandit` for static analysis.
+3. **go-security** - Detects `go.mod` presence, runs `govulncheck` and `gosec` if Go code exists.
+4. **security-summary** - Aggregates results into a GitHub Actions step summary and fails the workflow if any scan failed.
+
+Results are uploaded as artifacts (retained for 30 days) and written to the GitHub Actions step summary for easy review.
+
+### Reusable Workflow
+
+Other repositories can call the security scan as a reusable workflow:
+
+```yaml
+# In another repo's workflow
+jobs:
+  security:
+    uses: xenoISA/isA_Cloud/.github/workflows/security-scan.yaml@main
+    with:
+      python_path: '.'
+      go_path: '.'
+```
+
+## Vault + External Secrets Operator
+
+Production secrets are managed through HashiCorp Vault with the External Secrets Operator (ESO) syncing them into native Kubernetes Secrets. This eliminates hardcoded credentials in Helm values and manifests.
+
+### Architecture
+
+```
+Vault (HA, 3 replicas)
+  └── KV v2 engine at secret/
+      └── secret/data/isa-cloud/production/<service>
+            ├── postgresql  (password, replication-password, pgpool-admin-password)
+            ├── redis       (password)
+            ├── neo4j       (password)
+            ├── minio       (root-user, root-password)
+            ├── emqx        (dashboard-password)
+            └── apisix      (admin-key)
+
+External Secrets Operator
+  └── ClusterSecretStore (vault-backend)
+      └── ExternalSecret CRs (one per service)
+          └── K8s Secrets (postgresql-secret, redis-secret, etc.)
+```
+
+**Vault** runs in HA mode with 3 replicas using Consul as its storage backend. It uses Kubernetes auth so ESO authenticates via its ServiceAccount token.
+
+**ESO** refreshes secrets every hour (`refreshInterval: 1h`). Each `ExternalSecret` CR maps a Vault path to a native K8s Secret that Helm charts already reference.
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `production/values/vault.yaml` | Vault Helm values (HA, Consul backend, audit logs) |
+| `production/values/external-secrets.yaml` | ESO Helm values (2 replicas, webhook validation) |
+| `production/manifests/cluster-secret-store.yaml` | ClusterSecretStore connecting ESO to Vault |
+| `production/manifests/external-secrets.yaml` | ExternalSecret CRs for all infrastructure services |
+| `production/scripts/vault-init.sh` | One-time Vault init, unseal, auth setup, and secret seeding |
+
+### Initial Setup
+
+```bash
+# 1. Deploy Vault
+helm install vault hashicorp/vault -n isa-cloud-production \
+  -f production/values/vault.yaml
+
+# 2. Initialize and unseal Vault (one-time)
+./production/scripts/vault-init.sh
+
+# 3. Deploy External Secrets Operator
+helm install external-secrets external-secrets/external-secrets \
+  -n external-secrets --create-namespace \
+  -f production/values/external-secrets.yaml
+
+# 4. Apply the ClusterSecretStore and ExternalSecret CRs
+kubectl apply -f production/manifests/cluster-secret-store.yaml
+kubectl apply -f production/manifests/external-secrets.yaml
+```
+
+### Common Operations
+
+```bash
+# Check Vault status
+./production/scripts/vault-init.sh status
+
+# Unseal Vault after pod restart
+./production/scripts/vault-init.sh unseal
+
+# Update or add secrets
+./production/scripts/vault-init.sh seed
+
+# Verify ExternalSecrets are syncing
+kubectl get externalsecrets -n isa-cloud-production
+
+# Check a specific synced secret
+kubectl get secret postgresql-secret -n isa-cloud-production -o yaml
 ```
 
 ## Monitoring
